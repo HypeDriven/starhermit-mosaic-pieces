@@ -1,0 +1,74 @@
+[
+  {
+    "name": "piece-select",
+    "seconds": 1,
+    "prompt": "A soft fingertip tap on a small glazed ceramic mosaic tile, short bright click with a faint glassy ring.",
+    "event": "select"
+  },
+  {
+    "name": "piece-pickup",
+    "seconds": 1,
+    "prompt": "A small ceramic tile being lifted off a wooden tray, quick gentle scrape and lift with a light clink.",
+    "event": "pickup"
+  },
+  {
+    "name": "piece-place",
+    "seconds": 1,
+    "prompt": "A ceramic mosaic tile set down onto a wooden board, soft thud followed by a short satisfying clink.",
+    "event": "place"
+  },
+  {
+    "name": "piece-snap",
+    "seconds": 1,
+    "prompt": "Two magnetic puzzle pieces snapping together, crisp clean snap with a tight plastic-and-ceramic click.",
+    "event": "snap"
+  },
+  {
+    "name": "piece-rotate",
+    "seconds": 1,
+    "prompt": "A small tile spun a quarter turn on a felt surface, short airy whoosh with a faint friction swish.",
+    "event": "rotate"
+  },
+  {
+    "name": "invalid-move",
+    "seconds": 1,
+    "prompt": "A wooden block knocked gently against a table edge, dull muted double thud signaling refusal.",
+    "event": "invalid"
+  },
+  {
+    "name": "hint-reveal",
+    "seconds": 2,
+    "prompt": "A tiny brass bell shimmer with a soft rising glissando, like light sparkling across glass tiles.",
+    "event": "hint"
+  },
+  {
+    "name": "undo-move",
+    "seconds": 1,
+    "prompt": "A tile sliding backward across a wooden board, brief reverse whoosh ending in a soft settling clink.",
+    "event": "undo"
+  },
+  {
+    "name": "round-complete",
+    "seconds": 3,
+    "prompt": "A warm celebratory chime arpeggio on a small glockenspiel, four bright ascending notes with gentle reverb.",
+    "event": "complete"
+  },
+  {
+    "name": "round-fail",
+    "seconds": 2,
+    "prompt": "A soft descending marimba phrase of three mellow wooden notes, quiet and disappointed, no harshness.",
+    "event": "fail"
+  },
+  {
+    "name": "timer-tick",
+    "seconds": 1,
+    "prompt": "A single precise mechanical clock tick, short dry metallic click from a small wind-up timer.",
+    "event": "tick"
+  },
+  {
+    "name": "ui-click",
+    "seconds": 1,
+    "prompt": "A subtle modern interface button click, very short soft plastic tap with a clean muted attack.",
+    "event": "ui"
+  }
+]

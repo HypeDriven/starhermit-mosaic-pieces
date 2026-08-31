@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>Mosaic Pieces</title>
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body data-theme="default">
+<div id="app">
+
+  <header class="topbar" role="banner">
+    <h1 class="title">Mosaic Pieces</h1>
+    <div class="top-right">
+      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-left-rail" aria-label="Toggle objective panel">☰</button>
+      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-right-rail" aria-label="Toggle actions panel">✚</button>
+      <span id="clock" class="clock" title="Platform time"></span>
+      <button type="button" class="btn btn-ghost" data-action="nav-help" aria-label="Help and rules">?</button>
+      <button type="button" class="btn btn-ghost" data-action="nav-settings" aria-label="Settings">⚙</button>
+    </div>
+  </header>
+
+  <main class="layout" role="main">
+    <aside id="objective-rail" class="rail rail-left" aria-label="Objective and progression">
+      <h2 class="rail-h">Objective</h2>
+      <p id="objective-text">Assemble the mosaic.</p>
+      <div id="progress-block" class="progress-block" aria-label="Progress"></div>
+      <div id="journey-block"></div>
+    </aside>
+
+    <section id="game-region" class="stage" aria-label="Playfield">
+      <div id="canvas-host"></div>
+      <div id="webgl-fallback" class="webgl-fallback" hidden>
+        <p>3D rendering is unavailable in this browser. The accessible board below is fully playable; your progress is preserved.</p>
+      </div>
+      <div id="hud" class="hud" role="region" aria-label="Game status" hidden>
+        <span id="hud-mode"></span>
+        <span id="hud-placed"></span>
+        <span id="hud-time"></span>
+        <span id="hud-score"></span>
+        <span id="hud-limit" class="hud-limit"></span>
+      </div>
+    </section>
+
+    <aside id="actions-rail" class="rail rail-right" aria-label="Actions, pieces and board">
+      <h2 class="rail-h">Actions</h2>
+      <div class="action-grid">
+        <button type="button" class="btn" data-action="rotate" id="btn-rotate">Rotate <kbd>R</kbd></button>
+        <button type="button" class="btn" data-action="hint" id="btn-hint">Hint <kbd>H</kbd></button>
+        <button type="button" class="btn" data-action="undo" id="btn-undo">Undo <kbd>U</kbd></button>
+        <button type="button" class="btn" data-action="pause" id="btn-pause">Pause <kbd>Esc</kbd></button>
+      </div>
+      <h2 class="rail-h">Tray pieces</h2>
+      <ul id="piece-list" class="piece-list" aria-label="Pieces in tray"></ul>
+      <h2 class="rail-h">Board cells</h2>
+      <div id="cell-grid" class="cell-grid" role="group" aria-label="Board cells"></div>
+    </aside>
+  </main>
+
+  <nav class="bottom-tray" aria-label="Quick actions">
+    <button type="button" class="btn" data-action="rotate">Rotate</button>
+    <button type="button" class="btn" data-action="hint">Hint</button>
+    <button type="button" class="btn" data-action="undo">Undo</button>
+    <button type="button" class="btn" data-action="pause">Pause</button>
+  </nav>
+
+  <div id="overlay-root"></div>
+
+  <div id="live-region" class="visually-hidden" aria-live="polite" role="status"></div>
+  <div id="alert-region" class="visually-hidden" aria-live="assertive" role="alert"></div>
+</div>
+<noscript><p style="padding:2rem">Mosaic Pieces requires JavaScript to run.</p></noscript>
+<script type="module" src="./main.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "mosaic-pieces",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mosaic Pieces - assembly puzzle game (Three.js)",
+  "license": "UNLICENSED",
+  "scripts": {
+    "test": "node test/run_tests.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "three": "^0.170.0"
+  }
+}

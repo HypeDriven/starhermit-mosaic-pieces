@@ -1,0 +1,3 @@
+name=Mosaic Pieces
+launch=index.html
+server=server.js
