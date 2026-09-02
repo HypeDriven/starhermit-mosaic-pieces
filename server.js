@@ -170,7 +170,9 @@ const server = http.createServer(async (req, res) => {
       }
       if (p === '/api/v1/event' && req.method === 'POST') {
         await readBody(req); // anonymous funnel; counted, not stored with content
-        return sendJson(res, 204, {});
+        // 200 (not 204): Chrome aborts POST fetches answered with a 204
+        // empty body (net::ERR_ABORTED), which pollutes the console.
+        return sendJson(res, 200, { ok: true });
       }
       return sendJson(res, 404, { error: 'unknown endpoint' });
     } catch (e) {
