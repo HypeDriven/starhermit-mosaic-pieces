@@ -1,4 +1,10 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='hsl(59 60% 55%)'/><stop offset='1' stop-color='hsl(58 60% 40%)'/></linearGradient></defs>
-<rect width='64' height='64' rx='14' fill='url(#g)'/>
-<text x='32' y='44' font-size='34' text-anchor='middle' fill='#ffffff' font-family='Verdana,sans-serif' font-weight='bold'>M</text>
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>
+  <rect width='64' height='64' rx='13' fill='#2b2f3a'/>
+  <rect x='10' y='10' width='20' height='20' rx='4' fill='#eceef2'/>
+  <rect x='34' y='10' width='20' height='20' rx='4' fill='#8a4fd0'/>
+  <rect x='10' y='34' width='20' height='20' rx='4' fill='#8a4fd0'/>
+  <g transform='rotate(14 44 44)'>
+    <rect x='34' y='34' width='20' height='20' rx='4' fill='#cfa9ff'/>
+    <circle cx='44' cy='31' r='5' fill='#cfa9ff'/>
+  </g>
 </svg>
