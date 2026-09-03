@@ -2,7 +2,7 @@
 
 // Mosaic Pieces — rules engine.
 // Pure, deterministic, DOM-free. Used by the browser client, the
-// authoritative server (server.js) and the test-suite (test/run_tests.js).
+// authoritative server (server.js) and the test-suite (tests/run_tests.js).
 
 export const SCHEMA_VERSION = 2;
 export const CONTENT_VERSION = '1.0.0';
