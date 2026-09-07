@@ -28,6 +28,7 @@ function roundedRectShape(size, r) {
 }
 
 const texCache = new Map();
+const cachedTextures = new Set(); // shared, never disposed with a mesh
 function pieceTexture(color, glyph, upright) {
   const key = color + glyph + (upright ? '1' : '0');
   if (texCache.has(key)) return texCache.get(key);
@@ -53,6 +54,33 @@ function pieceTexture(color, glyph, upright) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   texCache.set(key, t);
+  cachedTextures.add(t);
+  return t;
+}
+
+// The goal image hanging on the gallery wall: the solved mosaic, so the
+// player (and the lessons that reference it) has a picture to work toward.
+function goalTexture(state, palette) {
+  const rs = state.ruleset;
+  const c = document.createElement('canvas');
+  c.width = 512; c.height = 348;
+  const x = c.getContext('2d');
+  x.fillStyle = '#11131a';
+  x.fillRect(0, 0, c.width, c.height);
+  const pad = 18;
+  const size = Math.min((c.width - pad * 2) / rs.cols, (c.height - pad * 2) / rs.rows);
+  const ox = (c.width - size * rs.cols) / 2, oy = (c.height - size * rs.rows) / 2;
+  x.textAlign = 'center'; x.textBaseline = 'middle';
+  for (const p of state.pieces) {
+    const cx = ox + (p.id % rs.cols) * size, cy = oy + Math.floor(p.id / rs.cols) * size;
+    x.fillStyle = palette[p.colorIndex % palette.length];
+    x.fillRect(cx + 1, cy + 1, size - 2, size - 2);
+    x.fillStyle = 'rgba(20,20,28,0.72)';
+    x.font = `bold ${Math.round(size * 0.5)}px system-ui, sans-serif`;
+    x.fillText(GLYPHS[p.colorIndex % GLYPHS.length], cx + size / 2, cy + size / 2 + size * 0.03);
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
 
@@ -227,6 +255,14 @@ export class Renderer {
       this.targets.set(p.id, { pos: tp.clone(), rot: mesh.rotation.y, lift: 0 });
       void i;
     });
+    // hang this puzzle's goal image in the frame on the wall
+    if (this.artMesh) {
+      const mat = this.artMesh.material;
+      if (mat.map) mat.map.dispose();
+      mat.map = goalTexture(state, palette);
+      mat.color.set(0xffffff); // the base tint would darken the mapped art
+      mat.needsUpdate = true;
+    }
     this._frameCamera(state);
   }
 
@@ -285,7 +321,10 @@ export class Renderer {
     this.pointer.set(ndcX, ndcY);
     this.raycaster.setFromCamera(this.pointer, this.camera);
     this.raycaster.layers.set(LAYER_GAMEPLAY);
-    const meshes = [...this.pieceMeshes.values()];
+    // placed pieces are part of the picture, not pick targets: raycasting
+    // them would turn a click on a finished cell into an illegal action
+    const placed = new Set(state.pieces.filter(p => p.placed).map(p => p.id));
+    const meshes = [...this.pieceMeshes.entries()].filter(([id]) => !placed.has(id)).map(([, m]) => m);
     const hits = this.raycaster.intersectObjects(meshes, false);
     if (hits.length > 0) return { kind: 'piece', pieceId: hits[0].object.userData.pieceId };
     // fall back to board-cell picking via the ground plane
@@ -368,7 +407,7 @@ function disposeObj(obj) {
     if (o.geometry) o.geometry.dispose();
     if (o.material) {
       const mats = Array.isArray(o.material) ? o.material : [o.material];
-      for (const m of mats) { if (m.map) m.map.dispose(); m.dispose(); }
+      for (const m of mats) { if (m.map && !cachedTextures.has(m.map)) m.map.dispose(); m.dispose(); }
     }
   });
 }

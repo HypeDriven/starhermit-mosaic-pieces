@@ -252,6 +252,9 @@ export function applyCommand(prev, cmd, opts = {}) {
   const invalid = (code) => {
     if (opts.strict) throw err(code, code);
     s.invalidActions += 1;
+    // Rejected commands are logged too: a replay must reproduce the same
+    // invalid-action count, otherwise validated score submissions mismatch.
+    s.commandLog.push(stripCmd(cmd));
     return s;
   };
 

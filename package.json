@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "description": "Mosaic Pieces - assembly puzzle game (Three.js)",
-  "license": "UNLICENSED",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
     "test": "node tests/run_tests.js",
+    "test:e2e": "node tests/e2e.mjs",
     "start": "node server.js"
   },
   "dependencies": {
     "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.62.1"
   }
 }

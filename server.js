@@ -74,10 +74,16 @@ function readBody(req) {
 // ---------- leaderboard validation ----------
 // Score claims are validated by replaying the ordered input log through the
 // deterministic rules engine with the declared seed and ruleset.
+const SUBMITTABLE_MODES = new Set(['daily', 'challenge', 'journey']);
+
 function validateSubmission(body) {
   if (!body || typeof body !== 'object') return 'malformed';
   const { board, seed, ruleset, commands, score, elapsedMs } = body;
   if (board !== 'daily' && board !== 'chase') return 'unknown board';
+  // The replay must use the mode the client played, or mode-specific rules
+  // (no undo in daily/challenge) diverge and every honest run is rejected.
+  if (!SUBMITTABLE_MODES.has(body.mode)) return 'unknown mode';
+  if ((board === 'daily') !== (body.mode === 'daily')) return 'board does not match mode';
   if (body.contentVersion !== CONTENT_VERSION) return 'stale content version';
   if (!Number.isInteger(seed) || seed < 0) return 'bad seed';
   if (!Array.isArray(commands) || commands.length > 5000) return 'bad command log';
@@ -96,7 +102,7 @@ function validateSubmission(body) {
   }
   let result;
   try {
-    result = Rules.replay(seed, rs, body.mode === 'daily' ? 'daily' : 'challenge', commands);
+    result = Rules.replay(seed, rs, body.mode, commands);
   } catch (e) {
     return 'replay failed: ' + (e.code || e.message);
   }
@@ -128,9 +134,10 @@ function submitEntry(body) {
   list.sort((a, b) => Rules.compareResults(
     { score: a.score, completed: true, invalidActions: a.invalidActions, elapsedMs: a.elapsedMs, sessionId: a.sessionId },
     { score: b.score, completed: true, invalidActions: b.invalidActions, elapsedMs: b.elapsedMs, sessionId: b.sessionId }));
+  const rank = list.indexOf(entry) + 1; // rank before the top-200 trim
   boards[key] = list.slice(0, 200);
   saveJson('leaderboards.json', boards);
-  return { ok: true, rank: boards[key].indexOf(entry) + 1, board: key };
+  return { ok: true, rank, board: key };
 }
 
 // ---------- request handling ----------
@@ -197,8 +204,12 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
-server.listen(PORT, () => {
-  console.log(`mosaic-pieces server on http://localhost:${PORT}`);
-});
+// Only bind a port when run as the entry point; importing this module (the
+// test-suite imports validateSubmission) must not start a listener.
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  server.listen(PORT, () => {
+    console.log(`mosaic-pieces server on http://localhost:${PORT}`);
+  });
+}
 
 export { server, validateSubmission };

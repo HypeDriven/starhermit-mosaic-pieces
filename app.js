@@ -68,8 +68,9 @@ export class App {
     this._clock();
     setInterval(() => this._clock(), 1000);
     this._wireInput();
-    this._resumeCheck();
-    this.showTitle();
+    // Only fall through to the title when there is no round to offer back:
+    // showTitle() replaces any open overlay, which would hide the prompt.
+    if (!this._resumeCheck()) this.showTitle();
     requestAnimationFrame((t) => this._loop(t));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state && this.state.status === 'active' && !this.ui.screenOpen) this.pause();
@@ -96,7 +97,7 @@ export class App {
   showPractice() { this.ui.practiceScreen(); }
   showChallenge() { this.ui.challengeScreen(); }
   showHelp() {
-    this.ui.helpScreen('Arrow keys move focus between legal targets, Enter selects/places, R rotates, H hints, U undoes, Esc pauses, C resets the camera.');
+    this.ui.helpScreen('Tab reaches the tray and board lists, arrow keys move within them, Enter selects a piece or places it, R rotates, H hints, U undoes, Esc pauses, C resets the camera. Digits 1-9 pick the nth tray piece.');
   }
   showSettings() { this.ui.settingsScreen(this.settings); }
   showProfile() { this.ui.profileScreen(this.progress, this.progress.displayName); }
@@ -384,10 +385,10 @@ export class App {
   _resumeCheck() {
     let doc = null;
     try { doc = JSON.parse(localStorage.getItem(LS.session) || 'null'); } catch (_) {}
-    if (!doc || !doc.state) return;
+    if (!doc || !doc.state) return false;
     try {
       const state = Rules.deserialize(doc.state);
-      if (state.status !== 'active') return;
+      if (state.status !== 'active') return false;
       const scr = this.ui.openScreen(`
         <h2>Welcome back</h2>
         <p>While you were away your round was paused. You had placed ${state.pieces.filter(p => p.placed).length}/${state.pieces.length} pieces in ${formatTime(state.elapsedMs)}.</p>
@@ -402,6 +403,12 @@ export class App {
           this.ui.closeScreen();
           this.state = state;
           this.round = { mode: doc.round.mode, seed: doc.round.seed, ruleset: state.ruleset, startEpoch: performance.now() - state.elapsedMs, stageIndex: doc.round.stageIndex, daily: doc.round.daily, lesson: LESSONS.find(l => l.id === doc.round.lessonId) || null, lessonStep: 0 };
+          this.paused = false;
+          // a timed round keeps its remaining time across the interruption
+          this.timeLeftSec = state.ruleset.timeLimitSec
+            ? Math.max(0, state.ruleset.timeLimitSec - state.elapsedMs / 1000)
+            : null;
+          this._lastTickSec = -1;
           this.renderer.buildPuzzle(this.state, this.settings.cvdPalette ? 'default' : state.ruleset.theme);
           this.renderer.update(this.state);
           this.ui.showHud(true);
@@ -413,8 +420,10 @@ export class App {
           this._clearSession();
           this.showTitle();
         }
-      }, { once: true });
+      });
+      return true;
     } catch (_) { this._clearSession(); }
+    return false;
   }
 
   // ---------- HUD / mirror ----------
@@ -430,9 +439,13 @@ export class App {
     this.ui.mirrorBoard(this.state, this.state.selected, candidates);
     this.renderer.showLegalTargets(this.state, candidates);
     const canAct = this.state.status === 'active' && !this.paused;
-    document.getElementById('btn-rotate').disabled = !canAct || this.state.selected == null;
-    document.getElementById('btn-hint').disabled = !canAct;
-    document.getElementById('btn-undo').disabled = !canAct || this.state.history.length === 0 || this.state.mode === 'daily' || this.state.mode === 'challenge';
+    // the rail and the mobile bottom tray both expose these actions
+    const setDisabled = (action, off) => {
+      for (const b of document.querySelectorAll(`[data-action="${action}"]`)) b.disabled = off;
+    };
+    setDisabled('rotate', !canAct || this.state.selected == null);
+    setDisabled('hint', !canAct);
+    setDisabled('undo', !canAct || this.state.history.length === 0 || this.state.mode === 'daily' || this.state.mode === 'challenge');
   }
 
   // ---------- input ----------
@@ -458,6 +471,7 @@ export class App {
         this.platform.event('settings-change', { key: k });
       }
     });
+    document.body.addEventListener('keydown', (e) => this._arrowNav(e));
     window.addEventListener('keydown', (e) => this._key(e));
     const host = document.getElementById('canvas-host');
     host.addEventListener('pointerdown', (e) => this._pointerDown(e));
@@ -483,18 +497,29 @@ export class App {
 
   _selectPiece(id) {
     if (!this._canPlay()) return;
+    const piece = Rules.pieceById(this.state, id);
+    if (!piece || piece.placed) { // explain instead of banking an invalid action
+      this.ui.announce('That piece is already placed.', true);
+      this.audio.playEvent('invalid');
+      return;
+    }
     if (this.state.selected === id) { // second click rotates (toggle behavior)
       this._cmd({ type: 'rotate', piece: id, rotations: 1 });
       return;
     }
-    if (this._cmd({ type: 'select', piece: id })) {
-      this.audio.playEvent('select');
+    if (this._cmd({ type: 'select', piece: id })) { // _cmd already plays the select cue
       this.ui.announce(`Piece ${id + 1} selected. ${Rules.legalTargetsFor(this.state, id).length} legal cells highlighted.`);
     }
   }
   _placeSelected(cell) {
     if (!this._canPlay() || this.state.selected == null) {
       if (this.state && this.state.selected == null) this.ui.announce('Select a tray piece first.', true);
+      return;
+    }
+    const code = Rules.canPlace(this.state, this.state.selected, cell);
+    if (code) { // known-illegal target: explain, do not penalise the misclick
+      this.ui.announce(this._invalidReason({ type: 'place', piece: this.state.selected, cell }), true);
+      this.audio.playEvent('invalid');
       return;
     }
     this._cmd({ type: 'place', piece: this.state.selected, cell });
@@ -539,10 +564,9 @@ export class App {
     if (drag.moved) {
       if (hit && hit.kind === 'cell') {
         if (this.state.selected !== drag.pieceId) this._cmd({ type: 'select', piece: drag.pieceId });
-        this._cmd({ type: 'place', piece: drag.pieceId, cell: hit.cell });
-      } else {
-        this.renderer.update(this.state); // snap back to tray
+        this._placeSelected(hit.cell);
       }
+      this.renderer.update(this.state); // settle into the cell, or back to the tray
     } else {
       // tap: select piece / place on cell; short tap vs long press by time
       if (hit && hit.kind === 'piece') this._selectPiece(hit.pieceId);
@@ -556,9 +580,31 @@ export class App {
     }
   }
 
+  // Directional navigation inside the accessible tray/board mirrors, as the
+  // help card promises. Rows are ruleset.cols wide on the board grid.
+  _arrowNav(e) {
+    const deltas = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 };
+    if (!(e.key in deltas) || !e.target.closest) return;
+    const container = e.target.closest('#cell-grid') || e.target.closest('#piece-list');
+    if (!container) return;
+    const vertical = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+    const cols = (container.id === 'cell-grid' && this.state) ? this.state.ruleset.cols : 1;
+    const step = deltas[e.key] * (vertical ? cols : 1);
+    const buttons = [...container.querySelectorAll('button')];
+    const i = buttons.indexOf(document.activeElement);
+    if (i < 0) return;
+    for (let j = i + step; j >= 0 && j < buttons.length; j += step) {
+      if (!buttons[j].disabled) { buttons[j].focus(); break; }
+    }
+    e.preventDefault();
+  }
+
   _key(e) {
     if (e.key === 'Escape') {
-      if (this.ui.screenOpen) { if (this.paused) this.resume(); else this.ui.closeScreen(); }
+      if (this.paused) this.resume();
+      // Title, mode-select and results have no board behind them: closing
+      // them would leave an empty screen with no way back into the game.
+      else if (this.ui.screenOpen) { if (this.state && this.state.status === 'active') this.ui.closeScreen(); }
       else this.pause();
       e.preventDefault();
       return;

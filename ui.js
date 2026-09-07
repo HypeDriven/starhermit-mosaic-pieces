@@ -177,6 +177,7 @@ export class UI {
         <tr><th>Total score</th><td><strong>${c.total}</strong></td></tr>
         <tr><th>Time</th><td>${formatTime(state.elapsedMs)}</td></tr>
         <tr><th>Moves</th><td>${state.moves}</td></tr>
+        <tr><th>Tiles matching the goal image</th><td>${state.pieces.filter(p => p.placed && p.placedCell === p.id).length}/${state.pieces.length}</td></tr>
       </table>
       ${extra || ''}
       <div class="row">
@@ -318,8 +319,16 @@ export class UI {
       const filled = state.occupied[c] !== undefined;
       b.className = filled ? 'filled' : (candidateCells.includes(c) ? 'candidate' : '');
       const x = c % state.ruleset.cols + 1, y = Math.floor(c / state.ruleset.cols) + 1;
-      b.textContent = filled ? '■' : `${x},${y}`;
-      b.setAttribute('aria-label', `Cell column ${x} row ${y}` + (filled ? ', occupied' : (candidateCells.includes(c) ? ', legal target' : '')));
+      // the goal tile for a cell is the piece whose home cell it is
+      const goal = state.pieces.find(p => p.id === c);
+      const goalGlyph = goal ? GLYPHS[goal.colorIndex % GLYPHS.length] : '·';
+      const here = filled ? state.pieces.find(p => p.id === state.occupied[c]) : null;
+      const matches = here ? here.id === c : false;
+      b.textContent = filled ? (matches ? GLYPHS[here.colorIndex % GLYPHS.length] : GLYPHS[here.colorIndex % GLYPHS.length] + '≠') : goalGlyph;
+      b.setAttribute('aria-label', `Cell column ${x} row ${y}, goal ${goalGlyph} tile` +
+        (filled
+          ? `, holds piece ${here.id + 1}, ${matches ? 'matches the goal' : 'does not match the goal'}`
+          : (candidateCells.includes(c) ? ', legal target' : '')));
       b.disabled = filled;
       grid.appendChild(b);
     }

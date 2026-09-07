@@ -281,12 +281,52 @@ section('server submission validation');
     assists: { hints: 0, undos: 0 }, invalidActions: 0, finalHash: R.stateHash(s)
   };
   eq(validateSubmission(good), null, 'valid submission accepted');
+  eq(validateSubmission({ ...good, mode: 'practice' }), 'unknown mode', 'unsubmittable mode rejected');
+  eq(validateSubmission({ ...good, board: 'chase' }), 'board does not match mode', 'daily run on the chase board rejected');
   eq(validateSubmission({ ...good, score: good.score + 1 }), 'score mismatch', 'inflated score rejected');
   eq(validateSubmission({ ...good, seed: 12345 }), 'seed does not match an official daily', 'wrong daily seed rejected');
   eq(validateSubmission({ ...good, contentVersion: '0.0' }), 'stale content version', 'stale version rejected');
   eq(validateSubmission({ ...good, commands: cmds.slice(0, -1) }), 'round not completed', 'incomplete log rejected');
   eq(validateSubmission({ ...good, elapsedMs: -1 }), 'implausible duration', 'bad duration rejected');
   ok(validateSubmission(null) !== null, 'null body rejected');
+
+  // A run containing rejected input must still validate: the command log
+  // carries invalid actions so the replay reproduces the same penalty.
+  let m = R.newGame(daily.seed, daily.ruleset, 'daily');
+  m = R.applyCommand(m, { type: 'place', piece: m.tray[0], cell: 9999 }); // illegal
+  let g2 = 0;
+  while (m.status === 'active' && g2++ < 500) {
+    const p = m.pieces.find(x => !x.placed);
+    if (m.ruleset.needRotation && p.rot !== 0) m = R.applyCommand(m, { type: 'rotate', piece: p.id, rotations: (4 - p.rot) % 4 });
+    m = R.applyCommand(m, { type: 'place', piece: p.id, cell: p.cell });
+  }
+  eq(m.invalidActions, 1, 'invalid action recorded during play');
+  const rep = R.replay(daily.seed, daily.ruleset, 'daily', m.commandLog);
+  eq(rep.state.invalidActions, m.invalidActions, 'replay reproduces invalid actions');
+  eq(rep.score, R.score(m), 'replay reproduces the penalised score');
+  eq(validateSubmission({ ...good, sessionId: 'sess-2', commands: m.commandLog, score: R.score(m), invalidActions: 1, finalHash: R.stateHash(m) }),
+    null, 'submission with invalid actions accepted');
+
+  // Journey runs go to the chase board and may use undo; the replay must use
+  // the declared mode or every honest journey submission is rejected.
+  const stage = JOURNEY[0];
+  let j = R.newGame(stage.seed, stage.ruleset, 'journey');
+  const first = j.pieces[0];
+  j = R.applyCommand(j, { type: 'place', piece: first.id, cell: first.cell });
+  j = R.applyCommand(j, { type: 'undo' });
+  let g3 = 0;
+  while (j.status === 'active' && g3++ < 500) {
+    const p = j.pieces.find(x => !x.placed);
+    if (j.ruleset.needRotation && p.rot !== 0) j = R.applyCommand(j, { type: 'rotate', piece: p.id, rotations: (4 - p.rot) % 4 });
+    j = R.applyCommand(j, { type: 'place', piece: p.id, cell: p.cell });
+  }
+  eq(j.undosUsed, 1, 'journey run used one undo');
+  eq(validateSubmission({
+    board: 'chase', name: 'Tester', sessionId: 'sess-3', seed: stage.seed, ruleset: j.ruleset,
+    contentVersion: R.CONTENT_VERSION, mode: 'journey', commands: j.commandLog,
+    score: R.score(j), elapsedMs: 45000, assists: { hints: 0, undos: 1 },
+    invalidActions: j.invalidActions, finalHash: R.stateHash(j)
+  }), null, 'journey submission with undo accepted');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
