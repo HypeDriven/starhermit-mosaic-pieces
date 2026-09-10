@@ -1,0 +1,21 @@
+# Mosaic Pieces — canonical SFX manifest.
+# Format: file | event id | description of the sound | usage context
+# Event ids are the argument to AudioEngine.playEvent() in audio.js; every id
+# also has a synthesised fallback there, so play survives a missing clip.
+# Clips: MOSS-SoundEffect v2.0, 48 kHz mono Opus 96 kbps VBR, loudness-normalised, 100 steps.
+
+piece-select.opus       | select     | Soft fingertip tap on a glazed ceramic tile, bright click with a faint glassy ring. | A tray piece becomes the selected piece (tray button, canvas tap, digit key, gamepad A).
+piece-pickup.opus       | pickup     | Small ceramic tile lifted off a wooden tray, gentle scrape and lift with a light clink. | A pointer drag crosses the 8 px movement threshold and the piece leaves the tray.
+piece-place.opus        | place      | Ceramic tile set down on a wooden board, soft thud then a short satisfying clink. | Reserved for placements that are not accompanied by the snap cue; currently unused by app.js.
+piece-snap.opus         | snap       | Two puzzle pieces snapping together, crisp click of plastic and ceramic. | A legal `place` command is accepted and the piece settles into its board cell.
+piece-rotate.opus       | rotate     | Tile spun a quarter turn on felt, short airy whoosh with a friction swish. | A `rotate` command turns the selected piece 90° (R key, Rotate button, double-tap, re-tap).
+invalid-move.opus       | invalid    | Wooden block knocked against a table edge, dull muted double thud. | Any rejected action: occupied cell, wrong rotation, undo in a ranked mode, no hint available.
+hint-reveal.opus        | hint       | Tiny brass bell shimmer with a rising glissando, light sparkling across glass. | A `hint` command resolves and the engine performs the revealed legal move.
+undo-move.opus          | undo       | Tile sliding backward across a board, brief reverse whoosh into a settling clink. | An `undo` command pops the history snapshot in Learn, Journey or Practice.
+round-complete.opus     | complete   | Warm glockenspiel arpeggio, four bright ascending notes with gentle reverb. | The final piece lands and the state reaches status `complete`.
+round-fail.opus         | fail       | Soft descending marimba phrase, three mellow notes, quiet and never harsh. | The move limit or the time limit ends the round (status `failed`).
+timer-tick.opus         | tick       | Single dry mechanical clock tick from a small wind-up timer. | Each of the last ten seconds of a timed Challenge round.
+ui-click.opus           | ui         | Subtle interface button click, very short soft plastic tap. | Any forward navigation or menu action, plus pause and resume.
+menu-back.opus          | back       | Muted descending two-tone wooden knock, lower and quieter than the confirm click. | Back, close-screen, leave-round and return-to-title actions.
+round-start.opus        | roundstart | Tray of ceramic tiles settling, soft collective clatter resolving into a warm wooden thud. | A round begins and the tray is dealt, in every mode.
+achievement-unlock.opus | achieve    | Bright celesta flourish, three ascending notes with a sparkling tail. | An achievement toast appears after a first-time unlock.

@@ -13,6 +13,7 @@ import { Platform } from './platform.js';
 
 const LS = { settings: 'mp-settings-v1', progress: 'mp-progress-v1', session: 'mp-session-v1' };
 const BOARD_KEY = { daily: 'daily', chase: 'chase' };
+const BACK_ACTIONS = new Set(['nav-title', 'nav-mode', 'close-screen', 'quit-round']);
 
 const DEFAULT_SETTINGS = {
   volumes: { music: 0.5, effects: 0.85, ambience: 0.4, voice: 0.8 },
@@ -170,6 +171,7 @@ export class App {
     this._syncMirror();
     this._updateHud();
     this.audio.startAmbience();
+    this.audio.playEvent('roundstart');
     this.platform.event('start', { mode });
     if (mode === 'lesson') this._announceLessonStep();
     else this.ui.announce(`${this._modeLabel()}. ${this.state.pieces.length} pieces. Select a piece from the tray to begin.`);
@@ -288,7 +290,7 @@ export class App {
       if (this.progress.achievements.includes(key)) return;
       this.progress.achievements.push(key);
       const meta = ACHIEVEMENTS.find(a => a.key === key);
-      if (meta) this.ui.toastAchievement(meta.label);
+      if (meta) { this.ui.toastAchievement(meta.label); this.audio.playEvent('achieve'); }
       this.platform.unlockAchievement(key, this.sessionId);
     };
     unlock('first_completion');
@@ -624,7 +626,8 @@ export class App {
   }
 
   _action(action, ds) {
-    this.audio.playEvent('ui');
+    // back/close actions get the softer, lower "menu-back" cue
+    this.audio.playEvent(BACK_ACTIONS.has(action) ? 'back' : 'ui');
     switch (action) {
       case 'nav-title': this.showTitle(); break;
       case 'nav-mode': this.showMode(); break;

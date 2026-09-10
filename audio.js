@@ -21,7 +21,10 @@ const SFX = {
   complete: 'round-complete',
   fail: 'round-fail',
   tick: 'timer-tick',
-  ui: 'ui-click'
+  ui: 'ui-click',
+  back: 'menu-back',
+  roundstart: 'round-start',
+  achieve: 'achievement-unlock'
 };
 
 export class AudioEngine {
@@ -117,6 +120,9 @@ export class AudioEngine {
       case 'fail':     [330, 262, 196].forEach((f, i) => blip('effects', f, 0.3, 'sine', 0.22, i * 0.14)); break;
       case 'tick':     blip('effects', 990, 0.05, 'square', 0.08); break;
       case 'ui':       blip('effects', 600, 0.05, 'triangle', 0.12); break;
+      case 'back':     blip('effects', 420, 0.06, 'triangle', 0.12); blip('effects', 320, 0.07, 'triangle', 0.1, 0.05); break;
+      case 'roundstart': [294, 392].forEach((f, i) => blip('effects', f, 0.22, 'sine', 0.18, i * 0.1)); break;
+      case 'achieve':  [659, 880, 1319].forEach((f, i) => blip('effects', f, 0.28, 'sine', 0.22, i * 0.1)); break;
       default: break;
     }
   }

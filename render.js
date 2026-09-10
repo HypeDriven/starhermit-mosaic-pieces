@@ -144,6 +144,16 @@ export class Renderer {
     );
     wall.position.set(0, 12, -16);
     this.scene.add(wall);
+    // Photographic plaster texture for the gallery wall. The flat colour above
+    // stays in place if the file is missing or fails to decode.
+    try {
+      new THREE.TextureLoader().load('assets/gallery-wall.webp', (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        wall.material.map = tex;
+        wall.material.color.set(0xffffff);
+        wall.material.needsUpdate = true;
+      }, undefined, () => {});
+    } catch (_) { /* keep the flat wall */ }
     const frame = new THREE.Mesh(
       new THREE.BoxGeometry(20, 14, 0.5),
       new THREE.MeshStandardMaterial({ color: 0x8a6d3b, roughness: 0.5, metalness: 0.4 })

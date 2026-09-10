@@ -70,5 +70,23 @@
     "seconds": 1,
     "prompt": "A subtle modern interface button click, very short soft plastic tap with a clean muted attack.",
     "event": "ui"
+  },
+  {
+    "name": "achievement-unlock",
+    "seconds": 2,
+    "prompt": "A bright shimmering award flourish, three ascending celesta notes with a soft sparkling tail and gentle bell resonance.",
+    "event": "achieve"
+  },
+  {
+    "name": "round-start",
+    "seconds": 2,
+    "prompt": "A wooden tray of ceramic tiles settling into place, soft collective clatter that resolves into a warm low wooden thud.",
+    "event": "roundstart"
+  },
+  {
+    "name": "menu-back",
+    "seconds": 1,
+    "prompt": "A soft muted interface back tap, short descending two-tone wooden knock, quieter and lower than a confirm click.",
+    "event": "back"
   }
 ]
