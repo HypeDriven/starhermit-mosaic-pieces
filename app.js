@@ -211,6 +211,7 @@ export class App {
     this._lastTickSec = -1;
     this.renderer.opts.reducedMotion = this.settings.reducedMotion;
     this.renderer.buildPuzzle(this.state, this.settings.cvdPalette ? 'default' : this.state.ruleset.theme);
+    this._drawGoalThumb();
     this.renderer.update(this.state);
     this.ui.showHud(true);
     this.ui.setObjective(this._objectiveText());
@@ -405,6 +406,30 @@ export class App {
     this.ui.setObjective('Lesson: ' + step.text);
     this.ui.announce(step.text);
     this.platform.event('tutorial-step', { step: this.round.lessonStep });
+    this._autoAdvanceLesson();
+  }
+  _drawGoalThumb() {
+    const thumb = document.getElementById('goal-thumb');
+    const img = this.renderer && this.renderer.goalImage;
+    if (!thumb || !img) return;
+    thumb.hidden = false;
+    const ctx = thumb.getContext('2d');
+    ctx.clearRect(0, 0, thumb.width, thumb.height);
+    ctx.drawImage(img, 0, 0, thumb.width, thumb.height);
+  }
+  _autoAdvanceLesson() {
+    // Informational steps (nothing to await) move on by themselves after a
+    // short read; actionable steps wait for the player.
+    clearTimeout(this._lessonTimer);
+    if (!this.round || this.round.mode !== 'lesson') return;
+    const step = this.round.lesson.steps[this.round.lessonStep];
+    if (!step || step.await) return;
+    this._lessonTimer = setTimeout(() => {
+      if (!this.round || this.round.mode !== 'lesson') return;
+      if (this.round.lesson.steps[this.round.lessonStep] !== step) return;
+      this.round.lessonStep++;
+      this._announceLessonStep();
+    }, 3200);
   }
   _checkLesson(cmd, prev) {
     if (!this.round || this.round.mode !== 'lesson') return;
@@ -511,6 +536,7 @@ export class App {
             : null;
           this._lastTickSec = -1;
           this.renderer.buildPuzzle(this.state, this.settings.cvdPalette ? 'default' : state.ruleset.theme);
+          this._drawGoalThumb();
           this.renderer.update(this.state);
           this.ui.showHud(true);
           this.ui.setObjective(this._objectiveText());
@@ -636,13 +662,13 @@ export class App {
   _pointerDown(e) {
     if (!this._canPlay()) return;
     const hit = this._pick(e);
-    if (hit && hit.kind === 'piece') {
-      this.drag = { pieceId: hit.pieceId, moved: false, x0: e.clientX, y0: e.clientY, t0: performance.now(), pointerId: e.pointerId };
-      e.currentTarget.setPointerCapture(e.pointerId);
-    }
+    // Every press starts a gesture: a piece may become a drag, anything else
+    // (a cell, empty desk) resolves as a tap on pointer-up.
+    this.drag = { pieceId: hit && hit.kind === 'piece' ? hit.pieceId : null, moved: false, x0: e.clientX, y0: e.clientY, t0: performance.now(), pointerId: e.pointerId };
+    e.currentTarget.setPointerCapture(e.pointerId);
   }
   _pointerMove(e) {
-    if (!this.drag || e.pointerId !== this.drag.pointerId) return;
+    if (!this.drag || e.pointerId !== this.drag.pointerId || this.drag.pieceId == null) return;
     const dx = e.clientX - this.drag.x0, dy = e.clientY - this.drag.y0;
     if (!this.drag.moved && Math.hypot(dx, dy) > 8) {
       this.drag.moved = true;
@@ -757,10 +783,30 @@ export class App {
       case 'rotate': if (this._canPlay() && this.state.selected != null) this._cmd({ type: 'rotate', piece: this.state.selected, rotations: 1 }); else this.ui.announce('Select a piece first.', true); break;
       case 'hint': if (this._canPlay()) this._cmd({ type: 'hint' }); break;
       case 'undo': if (this._canPlay()) this._cmd({ type: 'undo' }); break;
-      case 'toggle-left-rail': document.getElementById('objective-rail').classList.toggle('open'); break;
-      case 'toggle-right-rail': document.getElementById('actions-rail').classList.toggle('open'); break;
+      case 'toggle-left-rail': this._setDrawer('objective-rail', !document.getElementById('objective-rail').classList.contains('open')); break;
+      case 'toggle-right-rail': this._setDrawer('actions-rail', !document.getElementById('actions-rail').classList.contains('open')); break;
+      case 'close-rails': this._setDrawer(null, false); break;
       case 'replay-tutorial': this.ui.closeScreen(); this.confirmSetup({ mode: 'lesson', lesson: LESSONS[0] }); break;
       default: break;
+    }
+  }
+
+  // Compact drawers: one open at a time, scrim + close button dismiss.
+  _setDrawer(id, open) {
+    const left = document.getElementById('objective-rail'), right = document.getElementById('actions-rail');
+    left.classList.toggle('open', open && id === 'objective-rail');
+    right.classList.toggle('open', open && id === 'actions-rail');
+    const any = left.classList.contains('open') || right.classList.contains('open');
+    const scrim = document.getElementById('drawer-scrim');
+    if (scrim) {
+      scrim.hidden = !any;
+      if (!scrim.dataset.wired) { scrim.dataset.wired = '1'; scrim.addEventListener('click', () => this._setDrawer(null, false)); }
+    }
+    const topbar = document.querySelector('.topbar');
+    if (topbar) document.documentElement.style.setProperty('--topbar-h', Math.ceil(topbar.getBoundingClientRect().height) + 'px');
+    for (const b of document.querySelectorAll('.drawer-toggle')) {
+      const target = b.dataset.action === 'toggle-left-rail' ? left : right;
+      b.setAttribute('aria-expanded', String(target.classList.contains('open')));
     }
   }
 

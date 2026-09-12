@@ -39,6 +39,9 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, -apple
 
 .hud { position: absolute; top: calc(.5rem + var(--sat)); left: calc(.75rem + var(--sal)); display: flex; gap: .9rem; flex-wrap: wrap; padding: .4rem .8rem; background: #1c1f26cc; border-radius: .5rem; font-size: .9rem; }
 .hud-limit.warn { color: #ffb35c; font-weight: 600; }
+.goal-thumb { position: absolute; top: calc(.5rem + var(--sat)); right: calc(.75rem + var(--sar)); width: 96px; height: 66px; border: 2px solid var(--line); border-radius: .4rem; background: #11131a; z-index: 3; }
+.goal-thumb[hidden] { display: none; }
+@media (max-width: 700px) { .goal-thumb { width: 72px; height: 50px; top: calc(3.2rem + var(--sat)); } }
 
 .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; }
 .piece-list { list-style: none; display: flex; flex-wrap: wrap; gap: .35rem; }
@@ -95,13 +98,19 @@ kbd { font-family: inherit; }
 /* Compact desktop / tablet: rails become drawers */
 @media (max-width: 1023px) {
   .layout { grid-template-columns: 1fr; }
-  .rail { position: fixed; top: 0; bottom: 0; width: min(320px, 85vw); z-index: 15; transition: transform .2s ease; }
+  /* drawers sit below the top bar (its toggles stay reachable) and carry
+     their own close button; the scrim closes them on an outside tap */
+  .rail { position: fixed; top: var(--topbar-h, 56px); bottom: 0; width: min(320px, 85vw); z-index: 15; transition: transform .2s ease, visibility .2s; visibility: hidden; overflow-y: auto; }
   .rail-left { left: 0; transform: translateX(-100%); }
   .rail-right { right: 0; transform: translateX(100%); }
-  .rail.open { transform: none; box-shadow: 0 0 40px #000c; }
+  .rail.open { transform: none; visibility: visible; box-shadow: 0 0 40px #000c; }
   .drawer-toggle { display: inline-block !important; }
+  .rail-close { display: inline-flex !important; position: sticky; top: 0; float: right; min-width: 44px; min-height: 44px; align-items: center; justify-content: center; z-index: 1; }
+  #drawer-scrim { position: fixed; inset: 0; top: var(--topbar-h, 56px); z-index: 14; background: rgba(0,0,0,.35); }
+  #drawer-scrim[hidden] { display: none; }
 }
 .drawer-toggle { display: none; }
+.rail-close { display: none; }
 body.left-handed .layout { direction: rtl; }
 body.left-handed .layout > * { direction: ltr; }
 

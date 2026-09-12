@@ -14,8 +14,8 @@
   <header class="topbar" role="banner">
     <h1 class="title">Mosaic Pieces</h1>
     <div class="top-right">
-      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-left-rail" aria-label="Toggle objective panel">☰</button>
-      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-right-rail" aria-label="Toggle actions panel">✚</button>
+      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-left-rail" aria-label="Toggle objective panel" aria-expanded="false">☰</button>
+      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-right-rail" aria-label="Toggle actions panel" aria-expanded="false">✚</button>
       <span id="sync-status" class="sync-status" title="Save sync status"></span>
       <span id="clock" class="clock" title="Platform time"></span>
       <button type="button" class="btn btn-ghost" data-action="nav-help" aria-label="Help and rules">?</button>
@@ -24,7 +24,9 @@
   </header>
 
   <main class="layout" role="main">
+    <div id="drawer-scrim" hidden></div>
     <aside id="objective-rail" class="rail rail-left" aria-label="Objective and progression">
+      <button type="button" class="btn btn-ghost rail-close" data-action="close-rails" aria-label="Close panel">✕</button>
       <h2 class="rail-h">Objective</h2>
       <p id="objective-text">Assemble the mosaic.</p>
       <div id="progress-block" class="progress-block" aria-label="Progress"></div>
@@ -43,9 +45,12 @@
         <span id="hud-score"></span>
         <span id="hud-limit" class="hud-limit"></span>
       </div>
+      <!-- always-visible goal thumbnail (the wall picture may be out of frame) -->
+      <canvas id="goal-thumb" class="goal-thumb" width="128" height="88" aria-label="Goal image" role="img" hidden></canvas>
     </section>
 
     <aside id="actions-rail" class="rail rail-right" aria-label="Actions, pieces and board">
+      <button type="button" class="btn btn-ghost rail-close" data-action="close-rails" aria-label="Close panel">✕</button>
       <h2 class="rail-h">Actions</h2>
       <div class="action-grid">
         <button type="button" class="btn" data-action="rotate" id="btn-rotate">Rotate <kbd>R</kbd></button>

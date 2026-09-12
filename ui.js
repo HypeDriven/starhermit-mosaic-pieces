@@ -269,7 +269,7 @@ export class UI {
   }
 
   // ---------- HUD & accessibility mirror ----------
-  showHud(show) { this.hud.hidden = !show; }
+  showHud(show) { this.hud.hidden = !show; const t = document.getElementById('goal-thumb'); if (t && !show) t.hidden = true; }
   updateHud(state, modeLabel, timeLeftSec) {
     document.getElementById('hud-mode').textContent = modeLabel;
     const placed = state.pieces.filter(p => p.placed).length;

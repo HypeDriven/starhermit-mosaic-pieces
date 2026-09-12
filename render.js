@@ -188,9 +188,9 @@ export class Renderer {
   }
   trayPos(index, total) {
     const spacing = CELL * 1.06; // pieces are ~CELL*0.9 wide incl. bevel
-    const perRow = Math.min(total, 10);
-    const row = Math.floor(index / 10);
-    const col = index % 10;
+    const perRow = this.trayPerRow(total);
+    const row = Math.floor(index / perRow);
+    const col = index % perRow;
     const w = perRow * spacing;
     return new THREE.Vector3(-w / 2 + spacing / 2 + col * spacing, 0,
       (this._boardDepth || 6) / 2 + FRAMING.trayGap + row * spacing);
@@ -270,6 +270,7 @@ export class Renderer {
       const mat = this.artMesh.material;
       if (mat.map) mat.map.dispose();
       mat.map = goalTexture(state, palette);
+      this.goalImage = mat.map.image; // shared with the DOM goal thumbnail
       mat.color.set(0xffffff); // the base tint would darken the mapped art
       mat.needsUpdate = true;
     }
@@ -277,14 +278,44 @@ export class Renderer {
   }
 
   _frameCamera(state) {
+    this._framedState = state;
     const rs = state.ruleset;
-    const trayRows = Math.ceil(rs.cols * rs.rows / 10);
-    const trayCols = Math.min(rs.cols * rs.rows, 10);
-    const depth = rs.rows * CELL + FRAMING.trayGap * 2 + trayRows * CELL * 1.06 + 1.5;
-    const width = Math.max(rs.cols * CELL + 1, trayCols * CELL * 1.06 + 1);
-    const d = Math.max(15, depth * 1.5, width * 1.75);
-    this.camera.position.set(0, d * FRAMING.pitch, d * 0.72);
-    this.camera.lookAt(0, 0, depth * 0.16); // bias toward the tray so both fit
+    const total = rs.cols * rs.rows;
+    // Tray wraps into more rows on narrow viewports (see trayPerRow) so both
+    // axes can be fitted: project the board, tray and goal-picture corners and
+    // pull back until they all sit inside the frame.
+    const perRow = this.trayPerRow(total);
+    const trayRows = Math.ceil(total / perRow);
+    const boardW = rs.cols * CELL, boardD = rs.rows * CELL;
+    const trayW = perRow * CELL * 1.06;
+    const zTop = -boardD / 2 - FRAMING.trayGap / 2 - 0.6;
+    const zBottom = boardD / 2 + FRAMING.trayGap + (trayRows - 0.5) * CELL * 1.06 + 0.9;
+    const halfW = Math.max(boardW, trayW) / 2 + 0.7;
+    const pts = [];
+    for (const x of [-halfW, halfW]) { pts.push(new THREE.Vector3(x, 0, zTop)); pts.push(new THREE.Vector3(x, 0.6, zBottom)); }
+    const look = new THREE.Vector3(0, 1.5, (zTop + zBottom) / 2);
+    const dir = new THREE.Vector3(0, FRAMING.pitch, 0.72).normalize();
+    let d = Math.max(15, (zBottom - zTop) * 1.3, halfW * 2 * 1.5);
+    const v = new THREE.Vector3();
+    for (let i = 0; i < 12; i++) {
+      this.camera.position.copy(look).addScaledVector(dir, d);
+      this.camera.lookAt(look);
+      this.camera.updateMatrixWorld();
+      let worst = 0;
+      for (const p of pts) { v.copy(p).project(this.camera); worst = Math.max(worst, Math.abs(v.x) / 0.94, Math.abs(v.y) / 0.9); }
+      if (worst <= 1) break;
+      d *= Math.min(1.5, worst + 0.01);
+    }
+    this.camera.position.copy(look).addScaledVector(dir, d);
+    this.camera.lookAt(look);
+  }
+
+  // Tray columns per row: 10 on wide views, fewer on narrow ones so every
+  // tile face stays fully visible with generous targets.
+  trayPerRow(total) {
+    const aspect = this.camera ? this.camera.aspect : 1.6;
+    const max = aspect < 0.8 ? 4 : aspect < 1.2 ? 6 : 10;
+    return Math.max(1, Math.min(total, max));
   }
 
   // Sync visuals from an immutable rules snapshot.
@@ -399,6 +430,7 @@ export class Renderer {
       this.renderer.setSize(w, h, false);
       this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
+      if (this._framedState) { this._frameCamera(this._framedState); this.update(this._framedState); }
       return true;
     }
     return false;
