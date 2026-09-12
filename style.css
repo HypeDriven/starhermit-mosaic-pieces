@@ -19,6 +19,9 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, -apple
 .title { font-size: 1.3rem; font-weight: 600; letter-spacing: .04em; }
 .top-right { display: flex; align-items: center; gap: .5rem; }
 .clock { color: var(--muted); font-variant-numeric: tabular-nums; font-size: .85rem; }
+.sync-status { color: var(--muted); font-size: .8rem; }
+.sync-status[data-state="saving"] { color: var(--accent); }
+.sync-status[data-state="offline"] { color: #e0a050; }
 
 .layout { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 260px 1fr 300px; }
 .rail { padding: .75rem .9rem; background: var(--panel); overflow-y: auto; font-size: .95rem; line-height: 1.45; }

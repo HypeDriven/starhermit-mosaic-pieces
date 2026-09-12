@@ -388,26 +388,33 @@ integer held in state, never parsed back from text.
 `starhermit.txt` declares `name`, `launch=index.html`, `owner`, `server=server.js` and
 `cover=coverart.png`, per the platform conventions at https://wiki.starhermit.com/.
 
-**Used.**
-- *Server script* — `server.js` is the game's authoritative script, serving both the static
-  distribution and its `/api/v1` surface.
-- *Platform time* — `GET /api/v1/time`; `Platform.syncTime` corrects for round-trip latency and the
-  topbar clock and the daily date both read the corrected clock, not the device clock.
-- *Daily content* — `GET /api/v1/daily`.
-- *Leaderboards* — `POST /api/v1/leaderboard/submit` and `GET /api/v1/leaderboard`, on two boards:
-  `daily:<date>` and the all-time `chase`. Submissions are **replayed server-side** before they are
-  accepted (see §13); entries are idempotent per session id and boards are trimmed to 200.
-- *Achievements* — `POST /api/v1/achievements` with a validated key pattern, stored durably in
-  `data/achievements.json`.
-- *Sessions* — a per-round `sessionId` identifies submissions and marks the player's own row on a
-  board.
-- *Anonymous funnel telemetry* — `POST /api/v1/event` for `start`, `tutorial-step`, `round-end`,
-  `retry`, `settings-change` and `error` only. No text, no personal data.
+**Used (hosted — a launch token was read).**
+- *Launch token* — read once from the URL fragment `#game_token=` (query `?token=`/`?launch=`
+  fallbacks only off-platform), then stripped via `history.replaceState`; `sub`/`game_scope`
+  claims are decoded (slug never hard-coded); `Authorization: Bearer` rides every call; the token
+  is re-minted via `POST /api/v1/games/{slug}/launch-token` every 45 min (60 s retry).
+- *Account nickname* — `GET /api/v1/users/{sub}/profile` (never `/api/v1/me`, never usernames);
+  shown on the profile screen and used to resolve leaderboard entries to names, with the
+  `"Player "+id.slice(0,8)` fallback.
+- *Cloud save* — one slot via `GET`/`PUT /api/v1/me/cloud-saves/{slug}`; the doc (progress +
+  settings) travels as a stored-entry zip+base64 payload; the remote copy wins on conflict; saves
+  debounce ~2 s and flush on `pagehide`/`visibilitychange`; the topbar status shows
+  synced/saving/offline.
+- *Leaderboards (read-only)* — `GET /api/v1/games/{slug}` → `leaderboardId` + `me`, then
+  `GET /api/v1/leaderboards/{leaderboardId}/entries`; personal bests are kept locally and
+  cloud-saved.
 
-**Not used.** Platform identity and sign-in (the profile is a local guest name; the host shell owns
-sign-in), presence, friends graphs, real-time multiplayer, matchmaking, chat, parties, cloud saves
-and monetisation. Every network call degrades to a null result, so the whole game — including
-Daily — plays offline.
+**Local dev only (the game's own `server.js`).** Serves the static build and its `/api/v1`
+surface: `GET /api/v1/time` (round-trip-corrected clock), `GET /api/v1/daily`,
+`POST /api/v1/leaderboard/submit` + `GET /api/v1/leaderboard` on the `daily:<date>` and `chase`
+boards — submissions are **replayed server-side** before acceptance (see §13), idempotent per
+session id, trimmed to 200 — `POST /api/v1/achievements`, and anonymous `POST /api/v1/event`
+funnel telemetry. Hosted mode never calls these (no on-platform 404s); achievements and events
+are local/no-op there.
+
+**Not used.** Presence, friends graphs, real-time multiplayer, matchmaking, chat, parties and
+monetisation. Every network call degrades to a null result, so the whole game — including Daily —
+plays offline; `localStorage` remains the offline cache either way.
 
 ## 13. Technical architecture
 
@@ -448,13 +455,14 @@ reads `window.__mosaic` only to *assert* state, never to advance it.
 
 ## 14. Testing and acceptance criteria
 
-`npm test` (`tests/run_tests.js`, 524 assertions) covers: puzzle generation and mirroring; legal
+`npm test` (`tests/run_tests.js`, 531 assertions) covers: puzzle generation and mirroring; legal
 actions and every invalid reason code; rotation rules; hints answering through the legal-action API;
 terminal states for completion, move limit and time limit; the undo restriction in ranked modes;
 each scoring component; serialization, versioning and v1 migration; replay determinism as a property
 test over many seeds; fuzzing of malformed commands; golden fixed sessions; `validateAll` over all
-46 authored content rows; and `validateSubmission` accepting honest claims while rejecting stale
-content versions, wrong boards, bad seeds, score mismatches and hash mismatches.
+46 authored content rows; `validateSubmission` accepting honest claims while rejecting stale
+content versions, wrong boards, bad seeds, score mismatches and hash mismatches; and the cloud-save
+zip/base64 codec (signatures, stored method, round-trip, garbage rejection).
 
 `npm run test:e2e` runs 14 steps at 1280×800 and again at 390×844 with touch, failing on any
 non-benign console error or page error: load and title; journey lists 40 stages with only stage 1
@@ -500,10 +508,13 @@ on portrait mobile, actions rail docked on desktop).
   maps every accepted placement to `snap`.
 - `holdToDrag` is stored, persisted and shown in Settings but has no effect — drag always engages at
   8 px of movement, and toggle-select always works alongside it.
-- Server-side achievements are keyed by the per-round `sessionId`, which is regenerated on every
-  round, so `data/achievements.json` accumulates one row per session rather than per player.
-  Achievement *state* is authoritative in `localStorage`; the endpoint is effectively a counter.
-- The "Score chase" menu entry promises friends comparison; only global boards exist.
+- In local dev, server-side achievements are keyed by the per-round `sessionId` (regenerated every
+  round), so `data/achievements.json` accumulates one row per session rather than per player.
+  Achievement *state* is authoritative in `localStorage` (and the cloud save); the dev endpoint is
+  effectively a counter. On-platform, achievements are local only — there is no client unlock path.
+- Platform leaderboards are read-only for clients; ranked scores are not submitted on-platform.
+  The "Score chase" menu entry promises friends comparison; only the global platform board (plus
+  local dev boards) is shown.
 - Leaderboard boards live in a flat JSON file with no eviction beyond the 200-entry trim, and rate
   limiting is per-IP and in-memory.
 - All strings are en-US only (§10).

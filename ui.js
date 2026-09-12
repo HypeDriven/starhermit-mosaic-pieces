@@ -136,7 +136,7 @@ export class UI {
         <tr><th>Time limit</th><td>${info.ruleset.timeLimitSec ? info.ruleset.timeLimitSec + ' s' : 'None'}</td></tr>
         <tr><th>Undo</th><td>${info.undo ? 'Allowed' : 'Not allowed'}</td></tr>
         <tr><th>Hints</th><td>Available (cost score)</td></tr>
-        <tr><th>Ranked</th><td>${info.ranked ? 'Yes — submitted for validation' : 'No'}</td></tr>
+        <tr><th>Ranked</th><td>${info.ranked ? (info.rankedLabel || 'Yes') : 'No'}</td></tr>
         <tr><th>Expected duration</th><td>${info.duration}</td></tr>
       </table>
       <div class="row">
@@ -238,10 +238,13 @@ export class UI {
       </div>`, { label: 'Settings' });
   }
 
-  profileScreen(prog, displayName) {
+  profileScreen(prog, displayName, meta = {}) {
+    const who = meta.hosted
+      ? `Signed in as <strong>${escapeHtml(displayName)}</strong> — progress syncs to your account (status sits next to the clock).`
+      : `Playing as <strong>${escapeHtml(displayName)}</strong> (local guest profile; sign-in is offered by the host shell).`;
     return this.openScreen(`
       <h2>Profile</h2>
-      <p>Playing as <strong>${escapeHtml(displayName)}</strong> (local guest profile; sign-in is offered by the host shell).</p>
+      <p>${who}</p>
       <h3>Achievements</h3>
       <ul class="menu-list">
         ${ACHIEVEMENTS.map(a => `<li><button type="button" class="btn" disabled>${prog.achievements.includes(a.key) ? '🏆 ' : '🔒 '}${a.label}<small>${a.desc}</small></button></li>`).join('')}

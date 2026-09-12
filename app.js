@@ -22,7 +22,8 @@ const DEFAULT_SETTINGS = {
   cvdPalette: false, holdToDrag: false, timingAssist: false, leftHanded: false
 };
 const DEFAULT_PROGRESS = {
-  journeyCompleted: 0, achievements: [], daysPlayed: [], totalTimeMs: 0, displayName: 'Guest'
+  journeyCompleted: 0, achievements: [], daysPlayed: [], totalTimeMs: 0, displayName: 'Guest',
+  best: {} // board ('daily'|'chase') -> {score, elapsedMs, invalidActions, date?}
 };
 
 function load(key, fallback) {
@@ -66,6 +67,15 @@ export class App {
     this.renderer = new Renderer(host, { quality: this.settings.quality, reducedMotion: this.settings.reducedMotion });
     if (!this.renderer.webgl) document.getElementById('webgl-fallback').hidden = false;
     await this.platform.syncTime();
+    this.platform.onSyncStatus = (s) => this._showSyncStatus(s);
+    this._showSyncStatus(this.platform.hosted ? 'saving' : 'local');
+    if (this.platform.hosted) {
+      this.platform.scheduleRefresh();
+      const remote = await this.platform.loadCloudSave();
+      if (remote) this._applyRemoteSave(remote);
+      this.platform.loadProfile(); // nickname shows on the profile screen
+      this._persistProgress(); // mirror the (possibly merged) doc to the cloud slot
+    }
     this._clock();
     setInterval(() => this._clock(), 1000);
     this._wireInput();
@@ -101,10 +111,39 @@ export class App {
     this.ui.helpScreen('Tab reaches the tray and board lists, arrow keys move within them, Enter selects a piece or places it, R rotates, H hints, U undoes, Esc pauses, C resets the camera. Digits 1-9 pick the nth tray piece.');
   }
   showSettings() { this.ui.settingsScreen(this.settings); }
-  showProfile() { this.ui.profileScreen(this.progress, this.progress.displayName); }
+  showProfile() {
+    const name = this.platform.hosted
+      ? (this.platform.nickname || 'Player ' + String(this.platform.userId || '').slice(0, 8))
+      : this.progress.displayName;
+    this.ui.profileScreen(this.progress, name, { hosted: this.platform.hosted });
+  }
   async showLeaderboard() {
     this.ui.leaderboardScreen('<p>Loading…</p>');
     const today = this.platform.utcToday();
+    if (this.platform.hosted) {
+      // Platform leaderboards are script-owned: read-only, resolved to nicknames.
+      let html = '';
+      const info = await this.platform.gameInfo();
+      if (info && info.leaderboardId) {
+        const entries = await this.platform.leaderboardEntries(info.leaderboardId, { pageSize: 20 });
+        const rows = await Promise.all(entries.map(async (e) => {
+          const uid = e.userId != null ? String(e.userId) : (e.user_id != null ? String(e.user_id) : null);
+          const name = uid != null ? await this.platform.profileFor(uid) : (e.name || 'Player');
+          const me = uid != null && uid === String(this.platform.userId);
+          const ms = Number(e.elapsedMs != null ? e.elapsedMs : (e.elapsed_ms || 0));
+          return `<li class="${me ? 'me' : ''}"><span>${escapeHtml(name)}</span><span>${e.score} · ${formatTime(ms)}</span></li>`;
+        }));
+        html += `<h3>Platform board</h3>` + (rows.length === 0
+          ? '<p>No entries yet — be the first.</p>'
+          : `<ol class="leaderboard-list">${rows.join('')}</ol>`);
+        if (info.me && info.me.bestScore != null) html += `<p>Your platform best: ${escapeHtml(String(info.me.bestScore))}.</p>`;
+      } else {
+        html += '<p>No platform leaderboard for this game — showing personal bests only.</p>';
+      }
+      html += this._bestHtml(today);
+      if (this.ui.screenOpen) this.ui.leaderboardScreen(html);
+      return;
+    }
     const [daily, chase] = await Promise.all([
       this.platform.leaderboard(BOARD_KEY.daily, today),
       this.platform.leaderboard(BOARD_KEY.chase)
@@ -115,8 +154,15 @@ export class App {
       <ol class="leaderboard-list">${entries.slice(0, 20).map(e =>
         `<li class="${e.sessionId === this.sessionId ? 'me' : ''}"><span>${escapeHtml(e.name || 'Guest')}</span><span>${e.score} · ${formatTime(e.elapsedMs)}</span></li>`).join('')}</ol>`}`;
     if (this.ui.screenOpen) this.ui.leaderboardScreen(
-      list(daily, `Daily board — ${today}`) + list(chase, 'Global all-time board') +
+      list(daily, `Daily board — ${today}`) + list(chase, 'Global all-time board') + this._bestHtml(today) +
       (this.platform.online ? '' : '<p>Offline: boards unavailable, play continues locally.</p>'));
+  }
+  _bestHtml(today) {
+    const b = this.progress.best || {};
+    const rows = [];
+    if (b.daily) rows.push(`<li><span>Daily best (${escapeHtml(b.daily.date || today)})</span><span>${b.daily.score} · ${formatTime(b.daily.elapsedMs)}</span></li>`);
+    if (b.chase) rows.push(`<li><span>Chase best</span><span>${b.chase.score} · ${formatTime(b.chase.elapsedMs)}</span></li>`);
+    return `<h3>Personal bests</h3>` + (rows.length ? `<ol class="leaderboard-list">${rows.join('')}</ol>` : '<p>No personal bests yet.</p>');
   }
 
   // ---------- round lifecycle ----------
@@ -124,7 +170,7 @@ export class App {
     switch (kind.mode) {
       case 'lesson': return { title: 'Lesson: ' + kind.lesson.title, desc: 'Interactive tutorial — unranked.', ruleset: kind.lesson.ruleset, undo: true, ranked: false, duration: '~2 minutes' };
       case 'journey': { const s = kind.stage; return { title: `Journey stage ${s.index}`, desc: s.mastery ? 'Mastery stage.' : 'Authored progression stage.', ruleset: s.ruleset, undo: true, ranked: false, duration: `~${Math.round(s.par.timeSec / 60)} minutes` }; }
-      case 'daily': return { title: 'Daily challenge — ' + kind.daily.date, desc: 'One shared seed for all players today. Ranked; no undo.', ruleset: kind.daily.ruleset, undo: false, ranked: true, duration: '~5 minutes' };
+      case 'daily': return { title: 'Daily challenge — ' + kind.daily.date, desc: 'One shared seed for all players today. Ranked; no undo.', ruleset: kind.daily.ruleset, undo: false, ranked: true, rankedLabel: this.platform.hosted ? 'Yes — platform board (read-only)' : 'Yes — submitted for validation', duration: '~5 minutes' };
       case 'practice': return { title: 'Practice — ' + kind.preset.label, desc: 'Restart and undo freely; no effect on ratings.', ruleset: kind.preset.ruleset, undo: true, ranked: false, duration: 'At your own pace' };
       case 'challenge': return { title: 'Challenge: ' + kind.challenge.label, desc: kind.challenge.desc, ruleset: kind.challenge.ruleset, undo: false, ranked: false, duration: '~4 minutes' };
       default: return null;
@@ -204,7 +250,7 @@ export class App {
 
   quitRound() {
     if (this.round) this.progress.totalTimeMs += this.state ? this.state.elapsedMs : 0;
-    save(LS.progress, this.progress);
+    this._persistProgress();
     this.showTitle();
   }
 
@@ -280,7 +326,7 @@ export class App {
       extra = this._applyProgression();
       this._submitScore();
     }
-    save(LS.progress, this.progress);
+    this._persistProgress();
     this._clearSession();
     setTimeout(() => this.ui.resultsScreen(this.state, extra), win && !this.settings.reducedMotion ? 700 : 100);
   }
@@ -311,6 +357,25 @@ export class App {
   async _submitScore() {
     if (this.round.mode !== 'daily' && this.round.mode !== 'challenge' && this.round.mode !== 'journey') return;
     const board = this.round.mode === 'daily' ? BOARD_KEY.daily : BOARD_KEY.chase;
+    // Personal bests are kept locally and cloud-saved on every mode; the
+    // platform boards themselves are script-owned and read-only for clients.
+    const result = { score: Rules.score(this.state), elapsedMs: Math.floor(this.state.elapsedMs), invalidActions: this.state.invalidActions };
+    const prev = this.progress.best ? this.progress.best[board] : null;
+    const better = !prev || Rules.compareResults(
+      { score: result.score, completed: true, invalidActions: result.invalidActions, elapsedMs: result.elapsedMs, sessionId: this.sessionId },
+      { score: prev.score, completed: true, invalidActions: prev.invalidActions || 0, elapsedMs: prev.elapsedMs || 0, sessionId: '' }) < 0;
+    if (better) {
+      this.progress.best = { ...(this.progress.best || {}) };
+      this.progress.best[board] = board === 'daily'
+        ? { date: this.round.daily.date, score: result.score, elapsedMs: result.elapsedMs, invalidActions: result.invalidActions }
+        : { score: result.score, elapsedMs: result.elapsedMs, invalidActions: result.invalidActions };
+    }
+    if (this.platform.hosted) {
+      this._persistProgress();
+      if (better) this.ui.announce(`New personal best: ${result.score}.`);
+      return;
+    }
+    if (!this.platform.localDev) return; // offline against no dev server: best already kept above
     const payload = {
       board,
       date: this.round.daily ? this.round.daily.date : undefined,
@@ -321,10 +386,10 @@ export class App {
       contentVersion: Rules.CONTENT_VERSION,
       mode: this.round.mode,
       commands: this.state.commandLog,
-      score: Rules.score(this.state),
-      elapsedMs: this.state.elapsedMs,
+      score: result.score,
+      elapsedMs: result.elapsedMs,
       assists: { hints: this.state.hintsUsed, undos: this.state.undosUsed },
-      invalidActions: this.state.invalidActions,
+      invalidActions: result.invalidActions,
       finalHash: Rules.stateHash(this.state)
     };
     const r = await this.platform.submitScore(payload);
@@ -384,6 +449,40 @@ export class App {
     });
   }
   _clearSession() { try { localStorage.removeItem(LS.session); } catch (_) {} }
+
+  // ---------- progress/settings persistence: localStorage + cloud mirror ----------
+  _cloudDoc() { return { v: 1, savedAt: Date.now(), progress: this.progress, settings: this.settings }; }
+  _persistProgress() {
+    save(LS.progress, this.progress);
+    this.platform.saveCloudSoon(this._cloudDoc());
+  }
+  _persistSettings() {
+    save(LS.settings, this.settings);
+    this.platform.saveCloudSoon(this._cloudDoc());
+  }
+  _applyRemoteSave(remote) {
+    // Conflict resolution: the remote (account) copy wins.
+    try {
+      this.platform.clearPendingSave(); // a pre-load snapshot must not clobber remote
+      if (remote.progress && typeof remote.progress === 'object') {
+        this.progress = { ...structuredClone(DEFAULT_PROGRESS), ...remote.progress };
+        save(LS.progress, this.progress);
+      }
+      if (remote.settings && typeof remote.settings === 'object') {
+        this.settings = { ...structuredClone(DEFAULT_SETTINGS), ...remote.settings };
+        save(LS.settings, this.settings);
+        this._applySettings();
+        this.ui.applyA11yClasses(this.settings);
+      }
+    } catch (_) {}
+  }
+  _showSyncStatus(s) {
+    const el = document.getElementById('sync-status');
+    if (!el) return;
+    const labels = { synced: 'cloud synced', saving: 'saving…', offline: 'offline — local copy', local: 'local save' };
+    el.textContent = labels[s] || s;
+    el.dataset.state = s;
+  }
   _resumeCheck() {
     let doc = null;
     try { doc = JSON.parse(localStorage.getItem(LS.session) || 'null'); } catch (_) {}
@@ -465,7 +564,7 @@ export class App {
       if (t.dataset && t.dataset.volume) {
         this.settings.volumes[t.dataset.volume] = Number(t.value);
         this.audio.applyVolumes();
-        save(LS.settings, this.settings);
+        this._persistSettings();
       } else if (t.dataset && t.dataset.setting) {
         const k = t.dataset.setting;
         this.settings[k] = t.type === 'checkbox' ? t.checked : t.value;
@@ -487,7 +586,7 @@ export class App {
     });
   }
   _applySettings() {
-    save(LS.settings, this.settings);
+    this._persistSettings();
     this.ui.applyA11yClasses(this.settings);
     this.audio.settings = this.settings;
     this.audio.applyVolumes();

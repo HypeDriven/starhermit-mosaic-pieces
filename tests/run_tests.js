@@ -8,6 +8,7 @@
 import * as R from '../rules.js';
 import { JOURNEY, LESSONS, CHALLENGES, PRACTICE, dailyContent, validateAll } from '../content.js';
 import { validateSubmission } from '../server.js';
+import { zipStore, unzipFirstEntry, bytesToBase64, base64ToBytes } from '../platform.js';
 
 let passed = 0, failed = 0;
 function ok(cond, name) {
@@ -327,6 +328,28 @@ section('server submission validation');
     score: R.score(j), elapsedMs: 45000, assists: { hints: 0, undos: 1 },
     invalidActions: j.invalidActions, finalHash: R.stateHash(j)
   }), null, 'journey submission with undo accepted');
+}
+
+section('platform zip + base64 helpers (cloud save codec)');
+{
+  const doc = {
+    v: 1,
+    progress: { journeyCompleted: 3, achievements: ['first_completion'], best: { chase: { score: 1440, elapsedMs: 60000, invalidActions: 0 } } },
+    settings: { theme: 'forest', muted: true }
+  };
+  const bytes = zipStore('save.json', new TextEncoder().encode(JSON.stringify(doc)));
+  ok(bytes.length > 30, 'zip has local header + payload');
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  eq(dv.getUint32(0, true), 0x04034b50, 'local header signature');
+  eq(dv.getUint16(8, true), 0, 'entry is stored (no compression)');
+  eq(dv.getUint32(bytes.length - 22, true), 0x06054b50, 'EOCD signature');
+  const back = JSON.parse(new TextDecoder().decode(unzipFirstEntry(bytes)));
+  eq(back, doc, 'zip round-trip preserves the save doc');
+  const b64 = bytesToBase64(bytes);
+  eq([...base64ToBytes(b64)].join(','), [...bytes].join(','), 'base64 round-trip preserves content');
+  let threw = false;
+  try { unzipFirstEntry(new Uint8Array([1, 2, 3])); } catch (_) { threw = true; }
+  ok(threw, 'garbage bytes rejected as bad zip');
 }
 
 console.log(`\n${passed} passed, ${failed} failed`);
