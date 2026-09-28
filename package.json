@@ -6,7 +6,7 @@
   "description": "Mosaic Pieces - assembly puzzle game (Three.js)",
   "license": "PolyForm-Noncommercial-1.0.0",
   "scripts": {
-    "test": "node tests/run_tests.js",
+    "test": "node tests/run_tests.js && node --test tests/gfx.test.mjs",
     "test:e2e": "node tests/e2e.mjs",
     "start": "node server.js"
   },

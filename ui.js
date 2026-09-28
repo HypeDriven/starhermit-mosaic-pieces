@@ -5,6 +5,10 @@
 
 import { THEMES, JOURNEY, PRACTICE, CHALLENGES, LESSONS } from './content.js';
 import { PALETTES, scoreComponents } from './rules.js';
+import { PRESETS, CATEGORIES, presetTier, describe } from './gfx.js';
+import { gfxStrings, pickLocale } from './gfx-i18n.js';
+
+const GFX_LOCALE = pickLocale(typeof navigator !== 'undefined' ? navigator.language : 'en-US');
 
 const GLYPHS = ['▲', '◆', '●', '■', '★', '✚'];
 export const ACHIEVEMENTS = Object.freeze([
@@ -64,6 +68,7 @@ export class UI {
         <li><button type="button" class="btn" data-action="nav-journey">Journey<small>${prog.journeyCompleted}/${JOURNEY.length} stages (${journeyPct}%) — next: stage ${prog.nextJourney}.</small></button></li>
         <li><button type="button" class="btn" data-action="nav-profile">Profile &amp; achievements<small>${prog.achievements.length}/${ACHIEVEMENTS.length} achievements unlocked.</small></button></li>
         <li><button type="button" class="btn" data-action="nav-leaderboard">Leaderboards</button></li>
+        <li><button type="button" class="btn" data-action="nav-settings">Settings<small>Audio, graphics and accessibility.</small></button></li>
       </ul>`, { label: 'Title' });
   }
 
@@ -202,7 +207,7 @@ export class UI {
       <div class="row"><button type="button" class="btn btn-primary" data-action="close-screen">Close</button></div>`, { label: 'Help' });
   }
 
-  settingsScreen(settings) {
+  settingsScreen(settings, gfx) {
     const chk = (k) => settings[k] ? 'checked' : '';
     return this.openScreen(`
       <h2>Settings</h2>
@@ -211,17 +216,7 @@ export class UI {
       <div class="settings-grid">
         <label>Mute all <input type="checkbox" data-setting="muted" ${chk('muted')}></label>
       </div>
-      <h3>Graphics</h3>
-      <div class="settings-grid">
-        <label>Quality tier
-          <select data-setting="quality">
-            ${['high', 'medium', 'low'].map(q => `<option value="${q}" ${settings.quality === q ? 'selected' : ''}>${q}</option>`).join('')}
-          </select></label>
-        <label>Theme
-          <select data-setting="theme">
-            ${THEMES.map(t => `<option value="${t.id}" ${settings.theme === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
-          </select></label>
-      </div>
+      ${this._gfxSection(settings, gfx)}
       <h3>Accessibility</h3>
       <div class="settings-grid">
         <label>Reduced motion <input type="checkbox" data-setting="reducedMotion" ${chk('reducedMotion')}></label>
@@ -236,6 +231,77 @@ export class UI {
         <button type="button" class="btn" data-action="replay-tutorial">Replay tutorial</button>
         <button type="button" class="btn btn-primary" data-action="close-screen">Done</button>
       </div>`, { label: 'Settings' });
+  }
+
+  // ---------- Graphics section (localized; controls carry stable ids + data-gfx) ----------
+  _gfxSection(settings, gfx) {
+    const T = gfxStrings(GFX_LOCALE);
+    const info = gfx.info;
+    const opt = (v, label) => `<option value="${v}">${escapeHtml(label)}</option>`;
+    const cats = Object.entries(CATEGORIES).map(([cat, tiers]) => `
+        <label for="gfx-cat-${cat}">${escapeHtml(T.cat[cat])}
+          <select id="gfx-cat-${cat}" data-gfx="${cat}">
+            ${opt('preset', T.fromPreset.replace('{tier}', T.tier[presetTier(info.resolved.preset, cat)]))}
+            ${tiers.map(t => opt(t, T.tier[t])).join('')}
+          </select></label>`).join('');
+    const html = `
+      <section id="gfx-section" class="gfx-section" lang="${GFX_LOCALE}" aria-labelledby="gfx-h">
+      <h3 id="gfx-h">${escapeHtml(T.graphics)}</h3>
+      <div class="settings-grid">
+        <label>Theme
+          <select data-setting="theme">
+            ${THEMES.map(t => `<option value="${t.id}" ${settings.theme === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
+          </select></label>
+        <label for="gfx-preset">${escapeHtml(T.quality)}
+          <select id="gfx-preset" data-gfx="preset">
+            ${opt('auto', T.auto.replace('{tier}', T[info.detected]))}
+            ${PRESETS.map(p => opt(p, T[p])).join('')}
+          </select></label>
+        <label for="gfx-scale">${escapeHtml(T.renderScale)}
+          <span class="range-wrap"><input type="range" id="gfx-scale" data-gfx="render_scale" min="50" max="200" step="5" value="100"><output id="gfx-scale-val" for="gfx-scale">100%</output></span></label>
+        ${cats}
+        <label for="gfx-adaptive">${escapeHtml(T.adaptive)} <input type="checkbox" id="gfx-adaptive" data-gfx="adaptive"></label>
+        <label for="gfx-fps">${escapeHtml(T.showFps)} <input type="checkbox" id="gfx-fps" data-gfx="show_fps"></label>
+      </div>
+      <p id="gfx-summary" class="gfx-summary" aria-live="off"></p>
+      <p id="gfx-note" class="gfx-note" hidden></p>
+      </section>`;
+    // values are filled in after insertion by syncGfx()
+    queueMicrotask(() => this.syncGfx(gfx.saved, info));
+    return html;
+  }
+
+  /** Reflect saved graphics settings + renderer info into the open Graphics section. */
+  syncGfx(saved, info) {
+    const sec = document.getElementById('gfx-section');
+    if (!sec) return;
+    const T = gfxStrings(GFX_LOCALE);
+    const s = saved || {};
+    const preset = sec.querySelector('#gfx-preset');
+    preset.value = PRESETS.includes(s.preset) ? s.preset : 'auto';
+    const pct = Math.round((Number(s.render_scale) || 1) * 100);
+    sec.querySelector('#gfx-scale').value = String(pct);
+    sec.querySelector('#gfx-scale-val').textContent = pct + '%';
+    for (const cat of Object.keys(CATEGORIES)) {
+      const el = sec.querySelector('#gfx-cat-' + cat);
+      el.options[0].textContent = T.fromPreset.replace('{tier}', T.tier[presetTier(info.resolved.preset, cat)]);
+      el.value = CATEGORIES[cat].includes(s[cat]) ? s[cat] : 'preset';
+    }
+    sec.querySelector('#gfx-adaptive').checked = s.adaptive !== false;
+    sec.querySelector('#gfx-fps').checked = !!s.show_fps;
+    this.updateGfxSummary(info);
+  }
+
+  updateGfxSummary(info) {
+    const el = document.getElementById('gfx-summary');
+    if (!el) return;
+    const T = gfxStrings(GFX_LOCALE);
+    const text = [info.gpu || T.sum.unknownGpu, describe(info.resolved, info.pixels, T.sum)].join(' · ');
+    if (el.textContent !== text) el.textContent = text;
+    const note = document.getElementById('gfx-note');
+    const msg = !info.webgl ? T.noWebgl : info.postFailed ? T.postFailed : '';
+    note.hidden = !msg;
+    note.textContent = msg;
   }
 
   profileScreen(prog, displayName, meta = {}) {

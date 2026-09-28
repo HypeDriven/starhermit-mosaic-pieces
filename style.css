@@ -85,6 +85,14 @@ table.score td:last-child, table.score th:last-child { text-align: right; font-v
 .settings-grid label { display: flex; justify-content: space-between; align-items: center; gap: 1rem; min-height: 44px; }
 .settings-grid input[type="range"] { width: 160px; }
 .settings-grid select, .settings-grid input[type="checkbox"] { min-width: 44px; min-height: 32px; font-size: 1rem; }
+.settings-grid select { max-width: 58%; }
+.range-wrap { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; flex: 0 0 auto; }
+.range-wrap input[type="range"] { width: min(160px, 34vw); }
+.range-wrap output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.gfx-summary { margin-top: .6rem; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
+.gfx-note { margin-top: .4rem; color: #ffb35c; font-size: .9rem; }
+.fps-meter { position: absolute; left: calc(.5rem + var(--sal)); bottom: .5rem; z-index: 4; pointer-events: none; padding: .15rem .45rem; border-radius: .3rem; background: #0009; color: #cfe; font: 12px/1.4 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+.fps-meter[hidden] { display: none; }
 
 .leaderboard-list { list-style: none; margin-top: .5rem; }
 .leaderboard-list li { display: flex; justify-content: space-between; padding: .3rem .2rem; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
@@ -137,3 +145,4 @@ body.left-handed .layout > * { direction: ltr; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+.gfx-section .settings-grid select { max-width: 64%; font-size: .9rem; }

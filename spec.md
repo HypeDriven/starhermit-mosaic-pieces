@@ -24,7 +24,10 @@ finished when all of them are down.
 | `app.js` | State machine, command issuing, input (pointer/keyboard/gamepad), session persistence, progression, score submission. The only module that mutates game state. |
 | `rules.js` | Pure deterministic rules engine: RNG, puzzle generation, legality queries, `applyCommand`, scoring, serialization, replay. DOM-free; shared by client, server and tests. |
 | `content.js` | Versioned content: themes, 3 lessons, 40 journey stages, 3 practice presets, 3 challenges, daily ruleset, offline validators. |
-| `render.js` | Three.js scene: desk, wall, frame, board slab, cell ghosts, tray strip, extruded piece meshes, picking, quality tiers. |
+| `render.js` | Three.js scene: desk, wall, frame and picture light, board slab, cell ghosts, tray strip, extruded piece meshes, picking; applies the graphics settings (shadows, IBL, procedural detail, particles, post-processing chain, adaptive resolution, FPS readout). |
+| `gfx.js` | Pure graphics quality model: presets, per-category tiers, GPU detection (`detectPreset`), `resolve`, `presetTier`, `choosePreset`, `describe`. |
+| `gfx-i18n.js` | Graphics-panel strings in all nine required locales, picked from `navigator.language`. |
+| `vendor/three/addons/` | Three.js r170 addons (EffectComposer and passes, GTAO/bloom/SMAA/FXAA/output shaders, RoomEnvironment), copied from the same `three@0.170.0` release as `three.min.js`; the importmap in `index.html` maps `three` and `three/addons/`. |
 | `ui.js` | Overlay screens, HUD, the accessible tray/board mirror, settings forms, live announcements, achievements list. |
 | `audio.js` | WebAudio: four buses, sample playback from `sfx/`, synthesised fallbacks, ambience drone. |
 | `platform.js` | Same-origin `/api/v1` adapter with timeouts, round-trip-corrected server time, offline degradation. |
@@ -33,7 +36,7 @@ finished when all of them are down.
 | `data/` | Server-side durable store (`achievements.json`, `leaderboards.json`). Never served. |
 | `assets/` | Generated imagery (see §15). |
 | `sfx/` | 15 Opus clips plus `manifest.txt` (canonical), `manifest.json` (generator input), `manifest.md`. |
-| `tests/` | `run_tests.js` (unit/property/fuzz), `e2e.mjs` (real-UI playthrough), `smoke_browser.js`, `review-fixes.mjs`. |
+| `tests/` | `run_tests.js` (unit/property/fuzz), `gfx.test.mjs` (graphics model, `node --test`), `e2e.mjs` (real-UI playthrough), `smoke_browser.js`, `review-fixes.mjs`. |
 
 ## 2. Vision and design pillars
 
@@ -239,6 +242,7 @@ assertive region ("That cell is occupied", "The piece must be upright first — 
 ```
 boot → [saved active session?] → resume prompt ─┬─ resume → active
                                                 └─ discard → title
+title ─ Settings → (back to title)
 title ─ Play → mode select ─┬─ learn → setup → active
                             ├─ journey → setup → active
                             ├─ daily → setup → active
@@ -297,8 +301,36 @@ and rotation, and toward a 0.55-unit lift when selected. Rotation takes the shor
 Nothing blocks input, and any state change re-targets mid-flight.
 
 **Hero.** The lit board slab. One warm directional key (`#fff2e0`, intensity 2.4, soft PCF shadows)
-against a cool hemisphere fill grounds the tiles with contact shadows on a walnut desk; the scene
-clears to `#1d2028`.
+against a cool hemisphere fill grounds the glazed tiles with contact shadows on a walnut desk; the
+scene background is `#1d2028`.
+
+**Graphics.** A warm directional key (`#fff2e0`) with PCF soft shadows whose shadow box is fitted
+to the board and tray each time the camera is framed, a cool hemisphere fill, and a brass picture
+light over the goal frame (a spot light plus an over-bright bulb strip) light the desk. Output is
+sRGB with ACES filmic tone mapping. Optional effects: room-environment image-based lighting
+(`PMREMGenerator` + `RoomEnvironment`) that turns the frame into polished gilt and gives the tiles a
+clearcoat glaze (`MeshPhysicalMaterial`); procedural surface detail (walnut plank grain on the desk,
+speckled stone on the board slab, felt in the tray, glaze speckle, hairline crackle and a kiln edge
+on every tile face); drifting dust in the lamp light and sparkle bursts when a tile is placed (a
+larger one when the mosaic completes); and a post chain of GTAO contact shading, bloom limited to
+over-bright sources (threshold 0.9: bulb strip, target rings, sparkles), a colour grade with
+vignette, and FXAA/SMAA/MSAA. The selected tile bobs gently and pulses a warm glow, target rings
+breathe and the lamp shimmers faintly; all ambient motion stops under reduced motion. Tile faces are
+UV-mapped so the whole face texture — glyph and orientation tick — covers the tile top. The
+Settings card's **Graphics** section (reachable from the title's Settings entry and from pause)
+offers Theme, a quality preset (Auto, chosen from the WebGL unmasked renderer: software renderers
+get Low, discrete GPUs and Apple M-series get High, others Balanced, and touch devices are capped at
+Balanced; Low; Balanced; High; Ultra), a render scale (50–200 %), a per-effect override for shadows
+(off/1024²/2048²/4096²), ambient occlusion (off/on/high), bloom, colour grade, anti-aliasing
+(off/FXAA/SMAA/MSAA), reflections, surface detail (plain/detailed) and particles, each defaulting to
+"From preset (…)", adaptive resolution (averages 90 frames; above 26 ms steps the scale down by 0.1
+to 60 %, below 14 ms back up by 0.05), and a frame-rate readout (bottom-left of the stage, never over
+controls), plus a "GPU · cost · W×H px" summary. Choosing a preset clears overrides. Pixel ratio is
+`min(devicePixelRatio, cap) × render scale × adaptive scale`, with caps Low 1, Balanced 1.5,
+High/Ultra 2. Changes apply immediately and persist per device in `mp-graphics-v1`; the body and
+canvas carry `data-gfx-preset`. Low renders without a composer, shadows, IBL or particles, so it
+costs no more than the original single pass; if the post chain cannot be built or throws, the game
+renders directly and the panel says so. The panel's strings are localized (§10).
 
 **Reduced motion.** `reducedMotion` sets the damping to 1.0 — pieces teleport to their exact end
 state — and shortens the results delay from 700 ms to 100 ms. The CSS media query additionally
@@ -351,9 +383,11 @@ are fetched lazily after the first gesture and cached.
 ## 10. Localization
 
 The product requires en-US, en-GB, es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR and it-IT. **Today all
-player-facing strings are hard-coded en-US** and live inline in `index.html` (shell labels), `ui.js`
+player-facing strings are hard-coded en-US** except the Graphics settings section, whose strings
+(`gfx-i18n.js`) exist in all nine locales and follow `navigator.language` (es-* outside Spain →
+es-419, en-GB/IE/AU/NZ/ZA/IN → en-GB, unknown → en-US). The remaining strings live inline in `index.html` (shell labels), `ui.js`
 (screen bodies, achievement names, HUD labels) and `app.js` (objectives, announcements, rejection
-reasons). `<html lang="en">` is fixed and no locale is negotiated. See §17.
+reasons). `<html lang="en">` is fixed and no game-wide locale is negotiated (the Graphics section carries its own `lang`). See §17.
 
 Layout is already expansion-tolerant: nothing is sized to a string, prose caps at 70ch, buttons wrap
 to two lines, and every number formatted for display (`formatTime`, score totals) is derived from an
@@ -431,17 +465,20 @@ content version matches, the seed is an official daily seed (daily boards only),
 Because rejected commands are also logged, an honest client's invalid-action penalty replays
 exactly.
 
-**Persistence.** `localStorage` holds `mp-settings-v1` (audio, quality, theme, accessibility),
+**Persistence.** `localStorage` holds `mp-settings-v1` (audio, theme, accessibility),
+`mp-graphics-v1` (graphics preset and overrides; per device, not in the cloud save — a legacy
+`quality` of low/medium migrates once to Low/Balanced),
 `mp-progress-v1` (journey progress, achievements, days played, total time, display name) and
 `mp-session-v1` (the serialized in-flight round). The session is written after every command and
 cleared on any terminal state. `deserialize` refuses states from a newer schema and migrates v1 by
 starting a fresh 3×3 rather than guessing.
 
-**Performance budgets.** One draw pass per frame; scene complexity is a slab, a tray, a desk, a wall
+**Performance budgets.** One scene pass per frame, plus the post chain when enabled; scene complexity is a slab, a tray, a desk, a wall
 and one mesh per cell plus one ring per legal target, so a 6×6 stage stays well under 100 meshes.
 Piece geometry and the extrude are shared across every tile of a puzzle; face textures are cached by
-`(colour, glyph)` in a module-level map and are never disposed with a mesh. Quality tiers cap device
-pixel ratio at 2 / 1.5 / 1 and drop shadows at *low*. `_loop` returns early when the tab is hidden.
+`(colour, glyph, detail)` in a module-level map and are never disposed with a mesh; the procedural
+desk/slab/felt textures and the environment map are built once on first use. Graphics presets cap
+device pixel ratio at 1 / 1.5 / 2 / 2 and adaptive resolution trims it further when frames run slow. `_loop` returns early when the tab is hidden.
 
 **Server.** Static serving is GET/HEAD only and traversal-safe; `data/` is refused; `three.min.js`
 is cached immutably and everything else `no-cache`. Bodies cap at 256 KB and requests are rate
@@ -462,15 +499,22 @@ each scoring component; serialization, versioning and v1 migration; replay deter
 test over many seeds; fuzzing of malformed commands; golden fixed sessions; `validateAll` over all
 46 authored content rows; `validateSubmission` accepting honest claims while rejecting stale
 content versions, wrong boards, bad seeds, score mismatches and hash mismatches; and the cloud-save
-zip/base64 codec (signatures, stored method, round-trip, garbage rejection).
+zip/base64 codec (signatures, stored method, round-trip, garbage rejection). It then runs
+`node --test tests/gfx.test.mjs`: GPU-string preset detection (software → Low, discrete/Apple M →
+High, touch cap), `resolve` with presets, overrides, invalid tiers and render-scale clamping,
+`choosePreset` clearing overrides, the cost summary, and complete Graphics strings in all nine
+locales.
 
-`npm run test:e2e` runs 14 steps at 1280×800 and again at 390×844 with touch, failing on any
-non-benign console error or page error: load and title; journey lists 40 stages with only stage 1
+`npm run test:e2e` runs 16 steps at 1280×800 and again at 390×844 with touch, failing on any
+non-benign console error, console warning or page error: load and title; journey lists 40 stages with only stage 1
 unlocked; the setup card; round start with a visible HUD, a populated mirror and a live canvas; a
 full playthrough to results via tray and cell buttons; progression persisted to `localStorage`;
 retry → `Esc` pause → resume; undo restoring the board; hint placing a piece; settings changed,
-applied and persisted, returning to the pause card; help open and close; leaving to the title and
-starting Practice; finishing Practice with a score breakdown; and layout sanity (bottom tray visible
+applied and persisted, returning to the pause card; the Graphics section switching Low → Ultra →
+High with a bloom override, checked through `data-gfx-preset`, the live composer and the summary; help open and close; leaving to the title and
+starting Practice; finishing Practice with a score breakdown; graphics settings restored after a reload and
+reflected in the panel, the card not overflowing horizontally, and Auto clearing overrides (Low on
+SwiftShader) with Settings closing back to the title; and layout sanity (bottom tray visible
 on portrait mobile, actions rail docked on desktop).
 
 **QA bar, as checkable statements.**
@@ -491,6 +535,8 @@ on portrait mobile, actions rail docked on desktop).
 | `coverart.png` | Platform cover art (`cover=` in `starhermit.txt`) | prior pass | shipped |
 | `icon.png`, `favicon.svg` | App icon and browser tab icon | prior pass | shipped |
 | `three.min.js` | Three.js r170 renderer | vendored library | shipped |
+| `vendor/three/addons/**` | Three.js r170 post-processing passes, shaders and RoomEnvironment | vendored from `three@0.170.0` | shipped |
+| Desk grain, slab stone, tray felt, particle sprite | Canvas-generated textures (seeded, identical every load) | procedural, `render.js` | shipped |
 | `sfx/piece-select.opus` … `sfx/ui-click.opus` (12 clips) | Core interaction, rejection, assist and round-end cues | MOSS-SoundEffect v2.0 | shipped |
 | `sfx/menu-back.opus` | Back/close cue | MOSS-SoundEffect v2.0, 100 steps | generated in this pass |
 | `sfx/round-start.opus` | Tray-dealt cue at round start | MOSS-SoundEffect v2.0, 100 steps | generated in this pass |

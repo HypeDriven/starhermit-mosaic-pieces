@@ -10,14 +10,15 @@ import { Renderer } from './render.js';
 import { UI, ACHIEVEMENTS, formatTime, escapeHtml } from './ui.js';
 import { AudioEngine } from './audio.js';
 import { Platform } from './platform.js';
+import { choosePreset, PRESETS } from './gfx.js';
 
-const LS = { settings: 'mp-settings-v1', progress: 'mp-progress-v1', session: 'mp-session-v1' };
+const LS = { settings: 'mp-settings-v1', progress: 'mp-progress-v1', session: 'mp-session-v1', graphics: 'mp-graphics-v1' };
 const BOARD_KEY = { daily: 'daily', chase: 'chase' };
 const BACK_ACTIONS = new Set(['nav-title', 'nav-mode', 'close-screen', 'quit-round']);
 
 const DEFAULT_SETTINGS = {
   volumes: { music: 0.5, effects: 0.85, ambience: 0.4, voice: 0.8 },
-  muted: false, quality: 'high', theme: 'default',
+  muted: false, theme: 'default',
   reducedMotion: false, highContrast: false, largeText: false,
   cvdPalette: false, holdToDrag: false, timingAssist: false, leftHanded: false
 };
@@ -34,6 +35,18 @@ function load(key, fallback) {
     return { ...structuredClone(fallback), ...doc };
   } catch (_) { return structuredClone(fallback); }
 }
+// Graphics settings live under their own per-device key. The pre-preset
+// `quality` tier (high/medium/low) migrates once: low -> Low, medium -> Balanced.
+function loadGraphics(settings) {
+  try {
+    const raw = localStorage.getItem(LS.graphics);
+    if (raw) { const g = JSON.parse(raw); if (g && typeof g === 'object') return g; }
+  } catch (_) { /* fall through to defaults */ }
+  const legacy = settings && settings.quality;
+  if (settings) delete settings.quality;
+  const preset = legacy === 'low' ? 'low' : legacy === 'medium' ? 'balanced' : 'auto';
+  return PRESETS.includes(preset) ? { preset } : {};
+}
 function save(key, value) {
   try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) {}
 }
@@ -47,6 +60,7 @@ export class App {
       this.settings.reducedMotion = true;
     }
     this.progress = load(LS.progress, DEFAULT_PROGRESS);
+    this.gfx = loadGraphics(this.settings);
     this.audio = new AudioEngine(this.settings);
     this.state = null;          // current rules snapshot (immutable)
     this.round = null;          // { mode, seed, ruleset, lesson, stageIndex, startEpoch, sessionId }
@@ -64,7 +78,7 @@ export class App {
     this.ui.applyA11yClasses(this.settings);
     save(LS.settings, this.settings);
     const host = document.getElementById('canvas-host');
-    this.renderer = new Renderer(host, { quality: this.settings.quality, reducedMotion: this.settings.reducedMotion });
+    this.renderer = new Renderer(host, { gfx: this.gfx, reducedMotion: this.settings.reducedMotion });
     if (!this.renderer.webgl) document.getElementById('webgl-fallback').hidden = false;
     await this.platform.syncTime();
     this.platform.onSyncStatus = (s) => this._showSyncStatus(s);
@@ -110,7 +124,24 @@ export class App {
   showHelp() {
     this.ui.helpScreen('Tab reaches the tray and board lists, arrow keys move within them, Enter selects a piece or places it, R rotates, H hints, U undoes, Esc pauses, C resets the camera. Digits 1-9 pick the nth tray piece.');
   }
-  showSettings() { this.ui.settingsScreen(this.settings); }
+  showSettings() { this.ui.settingsScreen(this.settings, { saved: this.gfx, info: this.renderer.graphicsInfo() }); }
+
+  // Graphics section input: presets clear overrides; everything applies live
+  // and persists per device (mp-graphics-v1, not mirrored to the cloud save).
+  _onGfxInput(t) {
+    const k = t.dataset.gfx;
+    let g = { ...this.gfx };
+    if (k === 'preset') g = choosePreset(g, t.value);
+    else if (k === 'render_scale') g.render_scale = Math.min(2, Math.max(0.5, Number(t.value) / 100));
+    else if (k === 'adaptive' || k === 'show_fps') g[k] = t.checked;
+    else if (t.value === 'preset') delete g[k];
+    else g[k] = t.value;
+    this.gfx = g;
+    save(LS.graphics, g);
+    this.renderer.setGraphics(g);
+    this.ui.syncGfx(g, this.renderer.graphicsInfo());
+    this.platform.event('settings-change', { key: 'gfx.' + k });
+  }
   showProfile() {
     const name = this.platform.hosted
       ? (this.platform.nickname || 'Player ' + String(this.platform.userId || '').slice(0, 8))
@@ -591,6 +622,9 @@ export class App {
         this.settings.volumes[t.dataset.volume] = Number(t.value);
         this.audio.applyVolumes();
         this._persistSettings();
+      } else if (t.dataset && t.dataset.gfx) {
+        if (t.type === 'range') { const o = document.getElementById('gfx-scale-val'); if (o) o.textContent = t.value + '%'; }
+        this._onGfxInput(t);
       } else if (t.dataset && t.dataset.setting) {
         const k = t.dataset.setting;
         this.settings[k] = t.type === 'checkbox' ? t.checked : t.value;
@@ -616,7 +650,6 @@ export class App {
     this.ui.applyA11yClasses(this.settings);
     this.audio.settings = this.settings;
     this.audio.applyVolumes();
-    this.renderer.setQuality(this.settings.quality);
     this.renderer.opts.reducedMotion = this.settings.reducedMotion;
   }
 
@@ -764,7 +797,11 @@ export class App {
       case 'nav-settings': this.showSettings(); break;
       case 'nav-profile': this.showProfile(); break;
       case 'nav-leaderboard': this.showLeaderboard(); break;
-      case 'close-screen': this.ui.closeScreen(); if (this.paused) this.ui.pauseScreen(this.settings); break;
+      case 'close-screen':
+        this.ui.closeScreen();
+        if (this.paused) this.ui.pauseScreen(this.settings);
+        else if (!this.state) this.showTitle(); // opened from the title menu
+        break;
       case 'start-lesson': this.confirmSetup({ mode: 'lesson', lesson: LESSONS[Number(ds.index)] }); break;
       case 'start-stage': this.confirmSetup({ mode: 'journey', stage: JOURNEY[Number(ds.index) - 1] }); break;
       case 'start-practice': this.confirmSetup({ mode: 'practice', preset: PRACTICE.find(p => p.id === ds.id) }); break;
@@ -868,5 +905,9 @@ export class App {
       }
     }
     if (this.state) this.renderer.render();
+    if (t - (this._gfxInfoAt || 0) > 500 && document.getElementById('gfx-section')) {
+      this._gfxInfoAt = t;
+      this.ui.updateGfxSummary(this.renderer.graphicsInfo());
+    }
   }
 }

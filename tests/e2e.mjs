@@ -73,7 +73,7 @@ async function runPass(browser, label, viewport, hasTouch) {
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
   page.on('console', (m) => {
-    if (m.type() === 'error' && !browserNoise.test(m.text())) errors.push(`console: ${m.text()}`);
+    if ((m.type() === 'error' || m.type() === 'warning') && !browserNoise.test(m.text())) errors.push(`console ${m.type()}: ${m.text()}`);
   });
 
   // On mobile the side rails are off-canvas drawers; open the actions rail
@@ -242,6 +242,43 @@ async function runPass(browser, label, viewport, hasTouch) {
       if (h2 !== 'Paused') throw new Error('expected pause screen after settings, got: ' + h2);
     });
 
+    const frames = (n = 3) => page.evaluate((k) => new Promise((res) => {
+      let i = 0; const f = () => { if (++i >= k) res(); else requestAnimationFrame(f); }; requestAnimationFrame(f);
+    }), n);
+    const gfxState = () => page.evaluate(() => ({
+      body: document.body.dataset.gfxPreset,
+      canvas: document.querySelector('#canvas-host canvas')?.dataset.gfxPreset,
+      q: window.__mosaic.renderer.q,
+      composer: !!window.__mosaic.renderer.composer,
+      postFailed: window.__mosaic.renderer.postFailed,
+      summary: document.getElementById('gfx-summary')?.textContent || '',
+      saved: JSON.parse(localStorage.getItem('mp-graphics-v1') || 'null')
+    }));
+
+    await step(`${label}: Graphics section — Low → Ultra → High, override applies live`, async () => {
+      await page.click('.screen [data-action="nav-settings"]');
+      await page.waitForSelector('#gfx-section #gfx-preset');
+      await page.selectOption('#gfx-preset', 'low');
+      await frames();
+      let g = await gfxState();
+      if (g.body !== 'low' || g.canvas !== 'low' || g.composer || g.q.shadows !== 'off') throw new Error('Low not applied: ' + JSON.stringify(g));
+      if (!g.summary.includes('no shadows')) throw new Error('summary not updated for Low: ' + g.summary);
+      await page.selectOption('#gfx-preset', 'ultra');
+      await frames();
+      g = await gfxState();
+      if (g.body !== 'ultra' || !g.composer || g.postFailed || g.q.ao !== 'high') throw new Error('Ultra not applied: ' + JSON.stringify(g));
+      await page.selectOption('#gfx-preset', 'high');
+      await page.selectOption('#gfx-cat-bloom', 'off');
+      await frames();
+      g = await gfxState();
+      if (g.body !== 'high' || g.q.bloom !== 'off' || g.q.shadows !== 'medium' || !g.composer) throw new Error('High + bloom override not applied: ' + JSON.stringify(g));
+      if (g.saved.preset !== 'high' || g.saved.bloom !== 'off') throw new Error('graphics not persisted: ' + JSON.stringify(g.saved));
+      if (!g.summary.includes('2048² shadows')) throw new Error('summary missing shadow cost: ' + g.summary);
+      await page.locator('#gfx-section').screenshot({ path: SHOT('graphics', label) });
+      await page.click('[data-action="close-screen"]');
+      await page.waitForSelector('.screen-card h2');
+    });
+
     await step(`${label}: help opens and closes from pause`, async () => {
       await page.click('.screen [data-action="nav-help"]');
       await page.waitForSelector('.screen-card h2');
@@ -275,6 +312,28 @@ async function runPass(browser, label, viewport, hasTouch) {
       if (!txt.includes('Total score')) throw new Error('practice results missing breakdown');
       await page.click('[data-action="nav-title"]');
       await page.waitForSelector('.screen-card h2');
+    });
+
+    await step(`${label}: graphics settings survive reload; preset clears overrides`, async () => {
+      await page.reload({ waitUntil: 'load' });
+      await page.waitForFunction(() => !!window.__mosaic && !!window.__mosaic.renderer, null, { timeout: 15000 });
+      await page.waitForSelector('.screen-card h2');
+      let g = await gfxState();
+      if (g.body !== 'high' || g.q.bloom !== 'off') throw new Error('graphics not restored after reload: ' + JSON.stringify(g));
+      await page.click('.screen [data-action="nav-settings"]');
+      await page.waitForSelector('#gfx-section #gfx-preset');
+      const vals = await page.evaluate(() => [document.getElementById('gfx-preset').value, document.getElementById('gfx-cat-bloom').value]);
+      if (vals[0] !== 'high' || vals[1] !== 'off') throw new Error('panel does not reflect saved graphics: ' + vals);
+      // the panel fits the viewport width (no horizontal cut-off)
+      const over = await page.evaluate(() => { const c = document.querySelector('.screen-card'); return c.scrollWidth - c.clientWidth; });
+      if (over > 1) throw new Error('settings card overflows horizontally by ' + over + 'px');
+      await page.selectOption('#gfx-preset', 'auto');
+      g = await gfxState();
+      if (g.body !== 'low' || g.q.bloom !== 'off' || g.saved.bloom !== undefined || g.saved.preset !== 'auto') throw new Error('Auto did not clear overrides / resolve to Low on SwiftShader: ' + JSON.stringify(g));
+      await page.click('[data-action="close-screen"]');
+      await page.waitForSelector('.screen-card h2');
+      const h2 = await page.textContent('.screen-card h2');
+      if (!h2.includes('Mosaic Pieces')) throw new Error('closing settings from the title should return to the title, got: ' + h2);
     });
 
     await step(`${label}: mobile chrome / layout sanity`, async () => {
