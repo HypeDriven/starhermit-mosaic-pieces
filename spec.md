@@ -575,3 +575,7 @@ on portrait mobile, actions rail docked on desktop).
   thumbnail of the goal image, so the picture the player is assembling is visible during play.
 - **Hold-to-drag.** Intent: when enabled, a drag requires a press-and-hold dwell before the piece
   detaches, for players who scroll and drag with the same finger.
+
+## Browser interference
+
+`browser-guard.js` (loaded from `index.html`) suppresses browser UI that gets in the way of play: the right-click context menu, the iOS long-press callout, copy / cut / paste, and page text selection. Text fields (inputs, textareas, selects, contenteditable) keep normal selection, context menu and clipboard behaviour.
