@@ -8,10 +8,10 @@
  * Two passes: desktop 1280x800 and mobile 390x844 (touch). Screenshots at
  * each stage go to /tmp/mosaic-pieces-e2e-<stage>-<desktop|mobile>.png.
  *
- * Self-contained: embeds its own static file server on an ephemeral port
- * with minimal same-origin /api stubs (time/daily/leaderboard/event) so the
- * game runs fully "online" without the StarHermit authoritative server.js.
- * Fails loudly on any non-benign console error or pageerror.
+ * Self-contained: embeds its own plain static file server on an ephemeral
+ * port (no /api routes). Fails loudly on any non-benign console error or
+ * pageerror, and on any same-origin /api or /ws request (a standalone load
+ * must make none).
  *
  * Run: npm run test:e2e
  */
@@ -20,7 +20,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
-import { dailyContent } from '../content.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MIME = {
@@ -38,20 +37,6 @@ function startServer() {
   const server = http.createServer((req, res) => {
     const url = new URL(req.url || '/', 'http://localhost');
     const p = url.pathname;
-    const sendJson = (code, obj) => {
-      res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify(obj));
-    };
-    if (p.startsWith('/api/')) {
-      // minimal stand-ins for the platform API so play works fully offline
-      if (p === '/api/v1/time') return sendJson(200, { now: Date.now(), iso: new Date().toISOString() });
-      if (p === '/api/v1/daily') return sendJson(200, dailyContent(new Date().toISOString().slice(0, 10)));
-      if (p === '/api/v1/leaderboard') return sendJson(200, { board: url.searchParams.get('board') || 'chase', entries: [] });
-      if (p === '/api/v1/leaderboard/submit') return sendJson(200, { ok: true, rank: 1, board: 'stub' });
-      if (p === '/api/v1/achievements') return sendJson(200, { ok: true });
-      if (p === '/api/v1/event') return sendJson(200, { ok: true });
-      return sendJson(404, { error: 'unknown endpoint' });
-    }
     const rel = decodeURIComponent(p === '/' ? '/index.html' : p);
     const filePath = path.normalize(path.join(ROOT, rel));
     if (!filePath.startsWith(ROOT + path.sep)) { res.writeHead(403); return res.end(); }
@@ -72,6 +57,11 @@ async function runPass(browser, label, viewport, hasTouch) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('request', (r) => {
+    const u = new URL(r.url());
+    if (/^(127\.0\.0\.1|localhost)$/.test(u.hostname) && /^\/(api|ws)(\/|$)/.test(u.pathname)) errors.push(`own-server request: ${r.method()} ${u.pathname}`);
+  });
+  page.on('websocket', (ws) => errors.push(`websocket opened: ${ws.url()}`));
   page.on('console', (m) => {
     if ((m.type() === 'error' || m.type() === 'warning') && !browserNoise.test(m.text())) errors.push(`console ${m.type()}: ${m.text()}`);
   });

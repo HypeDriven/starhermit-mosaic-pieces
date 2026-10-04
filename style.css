@@ -146,3 +146,11 @@ body.left-handed .layout > * { direction: ltr; }
   * { transition: none !important; animation: none !important; }
 }
 .gfx-section .settings-grid select { max-width: 64%; font-size: .9rem; }
+
+/* Narrow portrait: keep every top-bar control inside the viewport. */
+@media (max-width: 420px) {
+  .topbar { gap: .4rem; }
+  .topbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.1rem; }
+  .top-right { flex: 0 0 auto; gap: .25rem; }
+  .top-right .btn-ghost { padding-inline: .4rem; }
+}

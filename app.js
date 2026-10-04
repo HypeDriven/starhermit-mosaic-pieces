@@ -16,6 +16,24 @@ const LS = { settings: 'mp-settings-v1', progress: 'mp-progress-v1', session: 'm
 const BOARD_KEY = { daily: 'daily', chase: 'chase' };
 const BACK_ACTIONS = new Set(['nav-title', 'nav-mode', 'close-screen', 'quit-round']);
 
+// Keyboard actions (KeyboardEvent.code). Mirrored as control.* lines in
+// starhermit.txt; the platform's per-player rebinds replace these at start.
+export const KEY_DEFAULTS = {
+  rotate: ['KeyR'], hint: ['KeyH'], undo: ['KeyU'], pause: ['Escape'], camera: ['KeyC'],
+  pick1: ['Digit1', 'Numpad1'], pick2: ['Digit2', 'Numpad2'], pick3: ['Digit3', 'Numpad3'],
+  pick4: ['Digit4', 'Numpad4'], pick5: ['Digit5', 'Numpad5'], pick6: ['Digit6', 'Numpad6'],
+  pick7: ['Digit7', 'Numpad7'], pick8: ['Digit8', 'Numpad8'], pick9: ['Digit9', 'Numpad9'],
+  navLeft: ['ArrowLeft'], navRight: ['ArrowRight'], navUp: ['ArrowUp'], navDown: ['ArrowDown']
+};
+/** Short label for a KeyboardEvent.code ('KeyR' → 'R', 'Escape' → 'Esc'). */
+export function keyLabel(code) {
+  const named = { Escape: 'Esc', ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Space: 'Space', Enter: 'Enter' };
+  if (named[code]) return named[code];
+  return String(code).replace(/^Key/, '').replace(/^Digit/, '').replace(/^Numpad/, 'Num ');
+}
+// Settings mirrored to the platform settings KV (player preferences).
+const KV_SETTINGS = ['volumes', 'muted', 'theme', 'reducedMotion', 'highContrast', 'largeText', 'cvdPalette', 'holdToDrag', 'timingAssist', 'leftHanded'];
+
 const DEFAULT_SETTINGS = {
   volumes: { music: 0.5, effects: 0.85, ambience: 0.4, voice: 0.8 },
   muted: false, theme: 'default',
@@ -72,6 +90,60 @@ export class App {
     this.paused = false;
     this.timeLeftSec = null;
     this._lastTickSec = -1;
+    this.bindings = structuredClone(KEY_DEFAULTS);
+  }
+
+  _codeAction(code) {
+    for (const [a, codes] of Object.entries(this.bindings)) if (codes.includes(code)) return a;
+    return null;
+  }
+  _keys(action) { return (this.bindings[action] || []).map(keyLabel).join('/'); }
+  _renderKeyLabels() {
+    for (const a of ['rotate', 'hint', 'undo', 'pause']) {
+      const k = document.querySelector(`#btn-${a} kbd`);
+      if (k) k.textContent = keyLabel((this.bindings[a] || [''])[0]);
+    }
+  }
+
+  // Platform settings KV: the account's preferences win over local values.
+  async _loadPlatformSettings() {
+    const kv = await this.platform.getSettings();
+    if (!kv) return;
+    let changed = false;
+    for (const k of KV_SETTINGS) {
+      if (kv[k] === undefined || kv[k] === null) continue;
+      this.settings[k] = k === 'volumes' ? { ...this.settings.volumes, ...kv[k] } : kv[k];
+      changed = true;
+    }
+    if (kv.graphics && typeof kv.graphics === 'object') {
+      this.gfx = kv.graphics;
+      save(LS.graphics, this.gfx);
+      this.renderer.setGraphics(this.gfx);
+    }
+    if (changed) {
+      save(LS.settings, this.settings);
+      this.ui.applyA11yClasses(this.settings);
+      this.audio.settings = this.settings;
+      this.audio.applyVolumes();
+      this.renderer.opts.reducedMotion = this.settings.reducedMotion;
+    }
+  }
+  _patchPlatformSettings() {
+    const o = {};
+    for (const k of KV_SETTINGS) o[k] = this.settings[k];
+    o.graphics = this.gfx;
+    this.platform.patchSettings(o);
+  }
+  _accountState() { return { signIn: this.platform.canSignIn(), invite: !!this.platform.inviteLink() }; }
+  async _copyInvite() {
+    const link = this.platform.inviteLink();
+    if (!link) return;
+    try {
+      await navigator.clipboard.writeText(link);
+      this.ui.toast(this.ui.shText('copied'));
+    } catch (_) {
+      this.ui.toast(this.ui.shText('copyFailed'));
+    }
   }
 
   async start() {
@@ -83,13 +155,23 @@ export class App {
     await this.platform.syncTime();
     this.platform.onSyncStatus = (s) => this._showSyncStatus(s);
     this._showSyncStatus(this.platform.hosted ? 'saving' : 'local');
+    let wasSignedIn = this.platform.hosted;
+    this.platform.onAuth = (a) => {
+      if (a.signedIn === wasSignedIn) return; // token renewals change nothing visible
+      wasSignedIn = a.signedIn;
+      if (!a.signedIn) this.ui.toast(this.ui.shText('signedOut'));
+      // refresh the title's account entries when it is the open screen
+      if (this.ui.root.querySelector('[aria-label="Title"]')) this.showTitle();
+    };
     if (this.platform.hosted) {
-      this.platform.scheduleRefresh();
       const remote = await this.platform.loadCloudSave();
       if (remote) this._applyRemoteSave(remote);
+      await this._loadPlatformSettings();
       this.platform.loadProfile(); // nickname shows on the profile screen
       this._persistProgress(); // mirror the (possibly merged) doc to the cloud slot
     }
+    this.bindings = await this.platform.loadBindings(KEY_DEFAULTS);
+    this._renderKeyLabels();
     this._clock();
     setInterval(() => this._clock(), 1000);
     this._wireInput();
@@ -100,7 +182,6 @@ export class App {
     document.addEventListener('visibilitychange', () => {
       if (document.hidden && this.state && this.state.status === 'active' && !this.ui.screenOpen) this.pause();
     });
-    this.platform.event('start', { mode: 'boot' });
   }
 
   _clock() {
@@ -114,7 +195,7 @@ export class App {
   showTitle() {
     this._teardownRound();
     this.ui.showHud(false);
-    this.ui.titleScreen({ journeyCompleted: this.progress.journeyCompleted, nextJourney: this.nextJourney, achievements: this.progress.achievements });
+    this.ui.titleScreen({ journeyCompleted: this.progress.journeyCompleted, nextJourney: this.nextJourney, achievements: this.progress.achievements, account: this._accountState() });
   }
   showMode() { this.ui.modeScreen(); }
   showLearn() { this.ui.learnScreen(); }
@@ -122,7 +203,9 @@ export class App {
   showPractice() { this.ui.practiceScreen(); }
   showChallenge() { this.ui.challengeScreen(); }
   showHelp() {
-    this.ui.helpScreen('Tab reaches the tray and board lists, arrow keys move within them, Enter selects a piece or places it, R rotates, H hints, U undoes, Esc pauses, C resets the camera. Digits 1-9 pick the nth tray piece.');
+    const k = (a) => this._keys(a);
+    const picks = Array.from({ length: 9 }, (_, i) => this._keys('pick' + (i + 1)).split('/')[0]).join(', ');
+    this.ui.helpScreen(`Tab reaches the tray and board lists, ${[k('navLeft'), k('navRight'), k('navUp'), k('navDown')].join('/')} move within them, Enter selects a piece or places it, ${k('rotate')} rotates, ${k('hint')} hints, ${k('undo')} undoes, ${k('pause')} pauses, ${k('camera')} resets the camera. ${picks} pick the 1st–9th tray piece.`);
   }
   showSettings() { this.ui.settingsScreen(this.settings, { saved: this.gfx, info: this.renderer.graphicsInfo() }); }
 
@@ -140,7 +223,7 @@ export class App {
     save(LS.graphics, g);
     this.renderer.setGraphics(g);
     this.ui.syncGfx(g, this.renderer.graphicsInfo());
-    this.platform.event('settings-change', { key: 'gfx.' + k });
+    this._patchPlatformSettings();
   }
   showProfile() {
     const name = this.platform.hosted
@@ -154,20 +237,18 @@ export class App {
     if (this.platform.hosted) {
       // Platform leaderboards are script-owned: read-only, resolved to nicknames.
       let html = '';
-      const info = await this.platform.gameInfo();
-      if (info && info.leaderboardId) {
-        const entries = await this.platform.leaderboardEntries(info.leaderboardId, { pageSize: 20 });
-        const rows = await Promise.all(entries.map(async (e) => {
-          const uid = e.userId != null ? String(e.userId) : (e.user_id != null ? String(e.user_id) : null);
-          const name = uid != null ? await this.platform.profileFor(uid) : (e.name || 'Player');
+      const [info, board] = await Promise.all([this.platform.gameInfo(), this.platform.platformBoard({ pageSize: 20 })]);
+      if (board && board.board) {
+        const rows = await Promise.all((board.items || []).map(async (e) => {
+          const uid = e.userId != null ? String(e.userId) : null;
+          const name = uid != null ? await this.platform.profileFor(uid) : (e.username || 'Player');
           const me = uid != null && uid === String(this.platform.userId);
-          const ms = Number(e.elapsedMs != null ? e.elapsedMs : (e.elapsed_ms || 0));
-          return `<li class="${me ? 'me' : ''}"><span>${escapeHtml(name)}</span><span>${e.score} · ${formatTime(ms)}</span></li>`;
+          return `<li class="${me ? 'me' : ''}"><span>${e.rank != null ? escapeHtml(String(e.rank)) + '. ' : ''}${escapeHtml(name)}</span><span>${escapeHtml(String(e.score))}</span></li>`;
         }));
-        html += `<h3>Platform board</h3>` + (rows.length === 0
+        html += `<h3>${escapeHtml(board.board.name || 'Platform board')}</h3>` + (rows.length === 0
           ? '<p>No entries yet — be the first.</p>'
           : `<ol class="leaderboard-list">${rows.join('')}</ol>`);
-        if (info.me && info.me.bestScore != null) html += `<p>Your platform best: ${escapeHtml(String(info.me.bestScore))}.</p>`;
+        if (info && info.me && info.me.bestScore != null) html += `<p>Your platform best: ${escapeHtml(String(info.me.bestScore))}.</p>`;
       } else {
         html += '<p>No platform leaderboard for this game — showing personal bests only.</p>';
       }
@@ -175,18 +256,7 @@ export class App {
       if (this.ui.screenOpen) this.ui.leaderboardScreen(html);
       return;
     }
-    const [daily, chase] = await Promise.all([
-      this.platform.leaderboard(BOARD_KEY.daily, today),
-      this.platform.leaderboard(BOARD_KEY.chase)
-    ]);
-    const list = (entries, label) => `
-      <h3>${label}</h3>
-      ${entries.length === 0 ? '<p>No entries yet — be the first.</p>' : `
-      <ol class="leaderboard-list">${entries.slice(0, 20).map(e =>
-        `<li class="${e.sessionId === this.sessionId ? 'me' : ''}"><span>${escapeHtml(e.name || 'Guest')}</span><span>${e.score} · ${formatTime(e.elapsedMs)}</span></li>`).join('')}</ol>`}`;
-    if (this.ui.screenOpen) this.ui.leaderboardScreen(
-      list(daily, `Daily board — ${today}`) + list(chase, 'Global all-time board') + this._bestHtml(today) +
-      (this.platform.online ? '' : '<p>Offline: boards unavailable, play continues locally.</p>'));
+    if (this.ui.screenOpen) this.ui.leaderboardScreen(this._bestHtml(today));
   }
   _bestHtml(today) {
     const b = this.progress.best || {};
@@ -250,7 +320,6 @@ export class App {
     this._updateHud();
     this.audio.startAmbience();
     this.audio.playEvent('roundstart');
-    this.platform.event('start', { mode });
     if (mode === 'lesson') this._announceLessonStep();
     else this.ui.announce(`${this._modeLabel()}. ${this.state.pieces.length} pieces. Select a piece from the tray to begin.`);
     this._saveSession();
@@ -369,7 +438,6 @@ export class App {
       this.progress.achievements.push(key);
       const meta = ACHIEVEMENTS.find(a => a.key === key);
       if (meta) { this.ui.toastAchievement(meta.label); this.audio.playEvent('achieve'); }
-      this.platform.unlockAchievement(key, this.sessionId);
     };
     unlock('first_completion');
     const today = this.platform.utcToday();
@@ -386,7 +454,7 @@ export class App {
     if (this.progress.totalTimeMs >= 60 * 60 * 1000) unlock('long_haul');
     return notes;
   }
-  async _submitScore() {
+  _submitScore() {
     if (this.round.mode !== 'daily' && this.round.mode !== 'challenge' && this.round.mode !== 'journey') return;
     const board = this.round.mode === 'daily' ? BOARD_KEY.daily : BOARD_KEY.chase;
     // Personal bests are kept locally and cloud-saved on every mode; the
@@ -402,31 +470,8 @@ export class App {
         ? { date: this.round.daily.date, score: result.score, elapsedMs: result.elapsedMs, invalidActions: result.invalidActions }
         : { score: result.score, elapsedMs: result.elapsedMs, invalidActions: result.invalidActions };
     }
-    if (this.platform.hosted) {
-      this._persistProgress();
-      if (better) this.ui.announce(`New personal best: ${result.score}.`);
-      return;
-    }
-    if (!this.platform.localDev) return; // offline against no dev server: best already kept above
-    const payload = {
-      board,
-      date: this.round.daily ? this.round.daily.date : undefined,
-      name: this.progress.displayName,
-      sessionId: this.sessionId,
-      seed: this.round.seed,
-      ruleset: this.round.ruleset,
-      contentVersion: Rules.CONTENT_VERSION,
-      mode: this.round.mode,
-      commands: this.state.commandLog,
-      score: result.score,
-      elapsedMs: result.elapsedMs,
-      assists: { hints: this.state.hintsUsed, undos: this.state.undosUsed },
-      invalidActions: result.invalidActions,
-      finalHash: Rules.stateHash(this.state)
-    };
-    const r = await this.platform.submitScore(payload);
-    if (r && r.ok) this.ui.announce(`Score submitted. Rank ${r.rank}.`);
-    else if (r && r.error) this.ui.announce('Score not submitted: ' + r.error);
+    // Persisted (locally, plus the cloud slot when signed in) by _checkTerminal.
+    if (better) this.ui.announce(`New personal best: ${result.score}.`);
   }
 
   // ---------- tutorial ----------
@@ -436,7 +481,6 @@ export class App {
     if (!step) return;
     this.ui.setObjective('Lesson: ' + step.text);
     this.ui.announce(step.text);
-    this.platform.event('tutorial-step', { step: this.round.lessonStep });
     this._autoAdvanceLesson();
   }
   _drawGoalThumb() {
@@ -488,7 +532,6 @@ export class App {
   retry() {
     if (!this.round) return this.showTitle();
     const { mode, seed, ruleset, lesson, stageIndex, daily } = this.round;
-    this.platform.event('retry', { mode });
     const extra = {};
     if (lesson) extra.lesson = lesson;
     if (stageIndex) extra.stageIndex = stageIndex;
@@ -515,6 +558,7 @@ export class App {
   _persistSettings() {
     save(LS.settings, this.settings);
     this.platform.saveCloudSoon(this._cloudDoc());
+    this._patchPlatformSettings();
   }
   _applyRemoteSave(remote) {
     // Conflict resolution: the remote (account) copy wins.
@@ -629,7 +673,6 @@ export class App {
         const k = t.dataset.setting;
         this.settings[k] = t.type === 'checkbox' ? t.checked : t.value;
         this._applySettings();
-        this.platform.event('settings-change', { key: k });
       }
     });
     document.body.addEventListener('keydown', (e) => this._arrowNav(e));
@@ -743,13 +786,14 @@ export class App {
   // Directional navigation inside the accessible tray/board mirrors, as the
   // help card promises. Rows are ruleset.cols wide on the board grid.
   _arrowNav(e) {
-    const deltas = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 };
-    if (!(e.key in deltas) || !e.target.closest) return;
+    const deltas = { navLeft: -1, navRight: 1, navUp: -1, navDown: 1 };
+    const act = this._codeAction(e.code);
+    if (!(act in deltas) || !e.target.closest) return;
     const container = e.target.closest('#cell-grid') || e.target.closest('#piece-list');
     if (!container) return;
-    const vertical = e.key === 'ArrowUp' || e.key === 'ArrowDown';
+    const vertical = act === 'navUp' || act === 'navDown';
     const cols = (container.id === 'cell-grid' && this.state) ? this.state.ruleset.cols : 1;
-    const step = deltas[e.key] * (vertical ? cols : 1);
+    const step = deltas[act] * (vertical ? cols : 1);
     const buttons = [...container.querySelectorAll('button')];
     const i = buttons.indexOf(document.activeElement);
     if (i < 0) return;
@@ -760,7 +804,8 @@ export class App {
   }
 
   _key(e) {
-    if (e.key === 'Escape') {
+    const act = this._codeAction(e.code);
+    if (act === 'pause') {
       if (this.paused) this.resume();
       // Title, mode-select and results have no board behind them: closing
       // them would leave an empty screen with no way back into the game.
@@ -770,15 +815,14 @@ export class App {
       return;
     }
     if (!this._canPlay()) return;
-    const k = e.key.toLowerCase();
-    if (k === 'r' && this.state.selected != null) { this._cmd({ type: 'rotate', piece: this.state.selected, rotations: 1 }); e.preventDefault(); }
-    else if (k === 'h') { this._cmd({ type: 'hint' }); e.preventDefault(); }
-    else if (k === 'u') { this._cmd({ type: 'undo' }); e.preventDefault(); }
-    else if (k === 'c') { if (this.state) this.renderer._frameCamera(this.state); e.preventDefault(); }
-    else if (/^[1-9]$/.test(k)) {
+    if (act === 'rotate' && this.state.selected != null) { this._cmd({ type: 'rotate', piece: this.state.selected, rotations: 1 }); e.preventDefault(); }
+    else if (act === 'hint') { this._cmd({ type: 'hint' }); e.preventDefault(); }
+    else if (act === 'undo') { this._cmd({ type: 'undo' }); e.preventDefault(); }
+    else if (act === 'camera') { if (this.state) this.renderer._frameCamera(this.state); e.preventDefault(); }
+    else if (act && /^pick[1-9]$/.test(act)) {
       // quick-select: nth unplaced tray piece
       const open = this.state.tray.filter(id => !Rules.pieceById(this.state, id).placed);
-      const id = open[Number(k) - 1];
+      const id = open[Number(act.slice(4)) - 1];
       if (id !== undefined) this._selectPiece(id);
     }
   }
@@ -797,6 +841,8 @@ export class App {
       case 'nav-settings': this.showSettings(); break;
       case 'nav-profile': this.showProfile(); break;
       case 'nav-leaderboard': this.showLeaderboard(); break;
+      case 'sh-sign-in': this.platform.signIn(); break;
+      case 'sh-invite': this._copyInvite(); break;
       case 'close-screen':
         this.ui.closeScreen();
         if (this.paused) this.ui.pauseScreen(this.settings);

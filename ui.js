@@ -6,7 +6,7 @@
 import { THEMES, JOURNEY, PRACTICE, CHALLENGES, LESSONS } from './content.js';
 import { PALETTES, scoreComponents } from './rules.js';
 import { PRESETS, CATEGORIES, presetTier, describe } from './gfx.js';
-import { gfxStrings, pickLocale } from './gfx-i18n.js';
+import { gfxStrings, pickLocale, shStrings } from './gfx-i18n.js';
 
 const GFX_LOCALE = pickLocale(typeof navigator !== 'undefined' ? navigator.language : 'en-US');
 
@@ -69,7 +69,30 @@ export class UI {
         <li><button type="button" class="btn" data-action="nav-profile">Profile &amp; achievements<small>${prog.achievements.length}/${ACHIEVEMENTS.length} achievements unlocked.</small></button></li>
         <li><button type="button" class="btn" data-action="nav-leaderboard">Leaderboards</button></li>
         <li><button type="button" class="btn" data-action="nav-settings">Settings<small>Audio, graphics and accessibility.</small></button></li>
+        ${this._accountItems(prog.account)}
       </ul>`, { label: 'Title' });
+  }
+
+  // StarHermit account entries: sign-in (only offered on *.starhermit.com
+  // without a token) and invite (only when signed in). Localized.
+  _accountItems(acct = {}) {
+    const S = shStrings(GFX_LOCALE);
+    const item = (action, label, sub) => `<li lang="${GFX_LOCALE}"><button type="button" class="btn" data-action="${action}">${escapeHtml(label)}<small>${escapeHtml(sub)}</small></button></li>`;
+    return (acct.signIn ? item('sh-sign-in', S.signIn, S.signInSub) : '') +
+      (acct.invite ? item('sh-invite', S.invite, S.inviteSub) : '');
+  }
+
+  /** Localized StarHermit strings for the app (toasts). */
+  shText(key) { return shStrings(GFX_LOCALE)[key]; }
+
+  toast(msg) {
+    const t = document.createElement('div');
+    t.className = 'achievement-toast';
+    t.setAttribute('role', 'status');
+    t.lang = GFX_LOCALE;
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3500);
   }
 
   modeScreen() {
