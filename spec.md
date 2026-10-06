@@ -272,6 +272,10 @@ otherwise pauses — the title, mode select and results are never dismissed into
   bottom safe-area inset; the topbar and HUD shrink.
 - **Landscape ≤500 px tall:** the left rail is hidden, the right rail docks at 200 px, the bottom
   tray is suppressed, and 44 px targets are re-asserted.
+- **Large screens (above 1600×1000):** `ui-scale.js` sets `--ui-scale` (`min(w/1600, h/1000)`, capped
+  at 2.5, exactly 1 below that); the topbar, rails, HUD, goal thumbnail, overlays and toasts zoom by it
+  and the rail columns widen by the same factor, while the 3D stage stays unzoomed in the middle track.
+- **≤420 px wide:** the topbar hides the clock so the game title keeps its room.
 
 Safe-area insets are applied to the topbar (top), bottom tray (bottom, left, right) and HUD (top,
 left). **Never cut off:** the HUD counters, the four action buttons, the tray list, and the primary

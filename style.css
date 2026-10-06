@@ -68,7 +68,7 @@ body { background: var(--bg); color: var(--text); font-family: system-ui, -apple
   /* key art behind every overlay, under a scrim that keeps card text at AA */
   background: linear-gradient(#14161cb0, #14161cdd), url("./assets/title-backdrop.webp") center / cover no-repeat, #14161cd9; }
 body.high-contrast .screen { background: #000 !important; }
-.screen-card { background: var(--panel); border: 2px solid var(--line); border-radius: .8rem; padding: 1.4rem 1.6rem; max-width: min(560px, 94vw); max-height: 90vh; overflow-y: auto; box-shadow: 0 12px 40px #000a; }
+.screen-card { background: var(--panel); border: 2px solid var(--line); border-radius: .8rem; padding: 1.4rem 1.6rem; max-width: min(560px, calc(94vw / var(--ui-scale, 1))); max-height: calc(90vh / var(--ui-scale, 1)); overflow-y: auto; box-shadow: 0 12px 40px #000a; }
 .screen-card h2 { margin-bottom: .6rem; }
 .screen-card h3 { margin: .8rem 0 .3rem; }
 .screen-card p, .screen-card li { max-width: 70ch; line-height: 1.5; }
@@ -87,7 +87,7 @@ table.score td:last-child, table.score th:last-child { text-align: right; font-v
 .settings-grid select, .settings-grid input[type="checkbox"] { min-width: 44px; min-height: 32px; font-size: 1rem; }
 .settings-grid select { max-width: 58%; }
 .range-wrap { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; flex: 0 0 auto; }
-.range-wrap input[type="range"] { width: min(160px, 34vw); }
+.range-wrap input[type="range"] { width: min(160px, calc(34vw / var(--ui-scale, 1))); }
 .range-wrap output { min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; }
 .gfx-summary { margin-top: .6rem; color: var(--muted); font-size: .85rem; overflow-wrap: anywhere; }
 .gfx-note { margin-top: .4rem; color: #ffb35c; font-size: .9rem; }
@@ -108,7 +108,7 @@ kbd { font-family: inherit; }
   .layout { grid-template-columns: 1fr; }
   /* drawers sit below the top bar (its toggles stay reachable) and carry
      their own close button; the scrim closes them on an outside tap */
-  .rail { position: fixed; top: var(--topbar-h, 56px); bottom: 0; width: min(320px, 85vw); z-index: 15; transition: transform .2s ease, visibility .2s; visibility: hidden; overflow-y: auto; }
+  .rail { position: fixed; top: var(--topbar-h, 56px); bottom: 0; width: min(320px, calc(85vw / var(--ui-scale, 1))); z-index: 15; transition: transform .2s ease, visibility .2s; visibility: hidden; overflow-y: auto; }
   .rail-left { left: 0; transform: translateX(-100%); }
   .rail-right { right: 0; transform: translateX(100%); }
   .rail.open { transform: none; visibility: visible; box-shadow: 0 0 40px #000c; }
@@ -153,4 +153,12 @@ body.left-handed .layout > * { direction: ltr; }
   .topbar .title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 1.1rem; }
   .top-right { flex: 0 0 auto; gap: .25rem; }
   .top-right .btn-ghost { padding-inline: .4rem; }
+  /* the clock would squeeze the game title down to a single clipped letter */
+  .top-right .clock { display: none; }
 }
+
+/* Large screens: each chrome layer zooms by --ui-scale (ui-scale.js, exactly 1 up to
+   1600x1000); the 3D stage stays unzoomed and fills the grid's middle track, whose rails
+   widen by the same factor. vh/vw lengths inside zoomed layers are divided by the scale. */
+.topbar, .rail, .hud, .goal-thumb, .bottom-tray, .screen, .achievement-toast, .fps-meter { zoom: var(--ui-scale, 1); }
+html.ui-scaled .layout { grid-template-columns: calc(260px * var(--ui-scale, 1)) 1fr calc(300px * var(--ui-scale, 1)); }
