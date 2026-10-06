@@ -202,7 +202,10 @@ seed is rejected.
 **Unlocks.** Five achievements (`ACHIEVEMENTS` in `ui.js`), unlocked in `_applyProgression`:
 `first_completion`, `rotation_master` (a rotation journey stage with zero hints), `streak_3` (three
 distinct UTC days played), `journey_20`, `long_haul` (60 total minutes). Unlocks toast on screen and
-persist locally (cloud-saved when signed in).
+persist locally (cloud-saved when signed in). Toasts stack in one container at the bottom centre during play; while a
+screen (results, menus) is open the stack moves to the top edge and the screen's top padding reserves its
+height (`--toast-h`), so a toast never covers a heading or button. Screens open with their first control
+focused without scrolling the card.
 
 **Content validation.** `validateStage` / `validateAll` prove, offline, that every stage generates
 the right number of pieces with unique ids, that the tray references only real pieces, that every

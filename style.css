@@ -98,7 +98,13 @@ table.score td:last-child, table.score th:last-child { text-align: right; font-v
 .leaderboard-list li { display: flex; justify-content: space-between; padding: .3rem .2rem; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
 .leaderboard-list li.me { color: var(--accent); font-weight: 600; }
 
-.achievement-toast { position: fixed; bottom: calc(1rem + var(--sab)); left: 50%; transform: translateX(-50%); background: var(--panel); border: 2px solid var(--accent); border-radius: .6rem; padding: .6rem 1.1rem; z-index: 40; }
+.toast-stack { position: fixed; bottom: calc(1rem + var(--sab)); left: 50%; transform: translateX(-50%); z-index: 40; display: flex; flex-direction: column; align-items: center; gap: .4rem; width: max-content; max-width: calc(100% - 1.5rem); pointer-events: none; }
+.toast-stack:empty { display: none; }
+.achievement-toast { background: var(--panel); border: 2px solid var(--accent); border-radius: .6rem; padding: .6rem 1.1rem; }
+/* a screen is open: toasts go to the top edge, the screen reserves their height */
+body:has(.screen) .toast-stack { top: calc(.5rem + var(--sat)); bottom: auto; }
+.screen { padding-top: calc(1rem + var(--toast-h, 0px)); }
+.screen-card { max-height: min(calc(90vh / var(--ui-scale, 1)), 100%); }
 
 .visually-hidden { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 kbd { font-family: inherit; }
@@ -160,5 +166,5 @@ body.left-handed .layout > * { direction: ltr; }
 /* Large screens: each chrome layer zooms by --ui-scale (ui-scale.js, exactly 1 up to
    1600x1000); the 3D stage stays unzoomed and fills the grid's middle track, whose rails
    widen by the same factor. vh/vw lengths inside zoomed layers are divided by the scale. */
-.topbar, .rail, .hud, .goal-thumb, .bottom-tray, .screen, .achievement-toast, .fps-meter { zoom: var(--ui-scale, 1); }
+.topbar, .rail, .hud, .goal-thumb, .bottom-tray, .screen, .toast-stack, .fps-meter { zoom: var(--ui-scale, 1); }
 html.ui-scaled .layout { grid-template-columns: calc(260px * var(--ui-scale, 1)) 1fr calc(300px * var(--ui-scale, 1)); }

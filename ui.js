@@ -46,7 +46,10 @@ export class UI {
     scr.innerHTML = `<div class="screen-card">${html}</div>`;
     this.root.appendChild(scr);
     const first = scr.querySelector('button, [href], input, select, [tabindex]');
-    if (first) first.focus();
+    // no scroll: the first button of a tall card (results on a phone) sits at the
+    // bottom and would open the card scrolled past its heading
+    if (first) first.focus({ preventScroll: true });
+    scr.firstElementChild.scrollTop = 0;
     return scr;
   }
   closeScreen() {
@@ -91,8 +94,21 @@ export class UI {
     t.setAttribute('role', 'status');
     t.lang = GFX_LOCALE;
     t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 3500);
+    this._pushToast(t, 3500);
+  }
+  /** Toasts stack in one container (bottom centre in play). While a screen is
+   *  open the stack moves to the top edge and the screen's top padding reserves
+   *  its height (--toast-h, layout px of the equally zoomed stack), so a toast
+   *  never covers a results heading or button. */
+  _pushToast(t, ms) {
+    let stack = document.querySelector('.toast-stack');
+    if (!stack) { stack = document.createElement('div'); stack.className = 'toast-stack'; document.body.appendChild(stack); }
+    const fit = () => {
+      const h = stack.offsetHeight;
+      document.documentElement.style.setProperty('--toast-h', h ? `${h + 8}px` : '0px');
+    };
+    stack.appendChild(t); fit();
+    setTimeout(() => { t.remove(); fit(); }, ms);
   }
 
   modeScreen() {
@@ -430,8 +446,7 @@ export class UI {
     const t = document.createElement('div');
     t.className = 'achievement-toast';
     t.textContent = '🏆 Achievement unlocked: ' + label;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+    this._pushToast(t, 4000);
   }
 
   applyA11yClasses(settings) {
