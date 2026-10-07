@@ -32,6 +32,7 @@ finished when all of them are down.
 | `audio.js` | WebAudio: four buses, sample playback from `sfx/`, synthesised fallbacks, ambience drone. |
 | `platform.js` | Adapter over `starhermit-sdk.js` (token, profile, cloud save, settings KV, controls, read-only boards) and, signed in only, the round-trip-corrected platform clock. No own-server calls. |
 | `starhermit-sdk.js` | Unmodified copy of the canonical StarHermit client (`window.StarHermit`). |
+| `score-script.js` | StarHermit platform script (`server=`): range-checks a completed round's score and posts it to the `high-score` leaderboard (canonical copy in the games repo's `tools/score-script.js`). |
 | `server.js` | Local static host; its legacy `/api/v1` routes are not called by the client. |
 | `style.css` | Themed shell, three responsive breakpoints, safe-area insets, accessibility classes. |
 | `data/` | Server-side durable store (`achievements.json`, `leaderboards.json`). Never served. |
@@ -427,7 +428,7 @@ integer held in state, never parsed back from text.
 
 ## 12. StarHermit integration
 
-`starhermit.txt` declares `name`, `launch=index.html`, `owner`, `server=server.js`,
+`starhermit.txt` declares `name`, `launch=index.html`, `owner`, `server=score-script.js`,
 `cover=coverart.png` and one `control.<action>=<codes> | <label>` line per keyboard action, per the
 platform conventions at https://wiki.starhermit.com/.
 
@@ -458,11 +459,14 @@ makes no request at all.
 - *Controls* — keyboard input is routed by `KeyboardEvent.code` through the bindings from
   `StarHermit.loadBindings()` (the player's platform rebinds over the `control.*` defaults); the
   help card and the rail's key hints show the effective keys.
-- *Leaderboards (read-only)* — the game's first platform board (`leaderboards` → entries) with
+- *Leaderboards* — the game's first platform board (`leaderboards` → entries) with
   nickname-resolved rows and the caller's best from the game definition; personal bests are kept
-  locally and cloud-saved. Clients never submit scores.
+  locally and cloud-saved. Every completed Journey, Daily or Challenge round posts its score through
+  `StarHermit.submitScores` — a practice session whose `score-script.js` posts it to the
+  `high-score` board (integer, higher is better, 0–20,000) — and the results card shows
+  "Leaderboard rank: #N" (or "Score posted…" / "Score not posted…"). Learn and Practice post nothing.
 
-The sign-in/invite labels and toasts are localized in all nine locales (`gfx-i18n.js`).
+The sign-in/invite labels, toasts and the leaderboard line are localized in all nine locales (`gfx-i18n.js`).
 
 **Standalone (no token).** The client makes no network request beyond its static files: no time
 probe, daily, leaderboard submit/read, achievements or funnel events. The clock is the device clock
@@ -470,7 +474,7 @@ probe, daily, leaderboard submit/read, achievements or funnel events. The clock 
 `server.js` is only a local static host (its legacy `/api/v1` routes are unused by the client).
 
 **Not used.** Sessions, matchmaking, friends picker, session chat, replays, realtime rooms and voice
-— the game is single-player and `server.js` is not a platform session script; achievements stay
+— the game is single-player and `score-script.js` only accepts leaderboard results; achievements stay
 local (part of the cloud-saved doc) because no server declares them. Every network call degrades
 to a null result, so the whole game — including Daily — plays offline.
 
@@ -578,9 +582,8 @@ on portrait mobile, actions rail docked on desktop).
   maps every accepted placement to `snap`.
 - `holdToDrag` is stored, persisted and shown in Settings but has no effect — drag always engages at
   8 px of movement, and toggle-select always works alongside it.
-- Platform leaderboards are read-only for clients; ranked scores are not submitted on-platform.
-  The "Score chase" menu entry promises friends comparison; only the global platform board (plus
-  personal bests) is shown.
+- The "Score chase" menu entry promises friends comparison; only the global platform `high-score`
+  board (plus personal bests) is shown, and daily results share that board with Journey and Challenge.
 - All strings are en-US only (§10).
 
 ## 17. Design intent not yet implemented

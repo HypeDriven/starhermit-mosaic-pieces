@@ -85,7 +85,8 @@ test('standalone: no token means no fetch at all', async () => {
   assert.equal(p.hosted, false);
   assert.equal(await p.syncTime(), false); // local clock, no request
   assert.equal(p.timeOffsetMs, 0);
-  for (const gone of ['req', 'daily', 'submitScore', 'leaderboard', 'unlockAchievement', 'event']) assert.equal(p[gone], undefined, gone);
+  for (const gone of ['req', 'daily', 'leaderboard', 'unlockAchievement', 'event']) assert.equal(p[gone], undefined, gone);
+  assert.deepEqual(await p.submitScore(1200), { posted: false, rank: null }); // no request standalone
   assert.equal(await p.loadProfile(), null);
   assert.equal(await p.loadCloudSave(), null);
   p.saveCloudSoon({ v: 1 });

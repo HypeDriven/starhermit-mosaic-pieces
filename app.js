@@ -423,13 +423,30 @@ export class App {
     this.audio.playEvent(win ? 'complete' : 'fail');
     this.progress.totalTimeMs += this.state.elapsedMs;
     let extra = '';
+    this._lbText = null; this._lbToken = null;
     if (win) {
       extra = this._applyProgression();
       this._submitScore();
+      this._postToLeaderboard(Rules.score(this.state));
     }
     this._persistProgress();
     this._clearSession();
-    setTimeout(() => this.ui.resultsScreen(this.state, extra), win && !this.settings.reducedMotion ? 700 : 100);
+    setTimeout(() => this.ui.resultsScreen(this.state, extra + (this._lbText != null
+      ? `<p id="results-lb" aria-live="polite">${this._lbText}</p>` : '')), win && !this.settings.reducedMotion ? 700 : 100);
+  }
+  // Hosted play only: post a completed journey, daily or challenge round to the
+  // platform high-score board; the results card shows the player's rank.
+  _postToLeaderboard(total) {
+    if (!this.platform.hosted || !['journey', 'daily', 'challenge'].includes(this.round.mode)) return;
+    const token = this._lbToken = {};
+    this._lbText = this.ui.shText('lbPosting');
+    this.platform.submitScore(total).then(r => {
+      if (token !== this._lbToken) return;
+      this._lbText = !r.posted ? this.ui.shText('lbFailed')
+        : r.rank ? this.ui.shText('lbRank').replace('{rank}', r.rank) : this.ui.shText('lbPosted');
+      const el = document.getElementById('results-lb');
+      if (el) el.textContent = this._lbText;
+    });
   }
   _applyProgression() {
     let notes = '';
