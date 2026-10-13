@@ -57,7 +57,7 @@ export class AudioEngine {
         const g = this.ctx.createGain();
         g.gain.value = this.settings.volumes[b] ?? 0.8;
         g.connect(this.master);
-        this.gains[b] = g;
+        this.gains[b] = (globalThis.GameOptions ? globalThis.GameOptions.tagBus(g, b) : g);
       }
       this.applyVolumes();
     }
@@ -82,7 +82,7 @@ export class AudioEngine {
   // Play the mapped sample through the effects bus; false while loading/failed.
   _playSample(name) {
     if (this._sfxState[name] === 'ready') {
-      const src = this.ctx.createBufferSource();
+      const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(this.ctx.createBufferSource(), name) : this.ctx.createBufferSource());
       src.buffer = this._sfxBuffers[name];
       src.connect(this.gains.effects);
       src.start();
@@ -99,7 +99,7 @@ export class AudioEngine {
     const t = ctx.currentTime;
     const variant = 0.94 + this.rng() * 0.12; // seeded pitch variant
     const blip = (bus, freq, dur, type = 'sine', gain = 0.25, when = 0) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
+      const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(ctx.createOscillator(), bus) : ctx.createOscillator()), g = ctx.createGain();
       o.type = type; o.frequency.value = freq * variant;
       g.gain.setValueAtTime(0.0001, t + when);
       g.gain.exponentialRampToValueAtTime(gain, t + when + 0.012);
@@ -132,7 +132,7 @@ export class AudioEngine {
     if (!ctx || this._started) return;
     this._started = true;
     const mk = (freq, gain) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
+      const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(ctx.createOscillator(), null) : ctx.createOscillator()), g = ctx.createGain();
       o.type = 'sine'; o.frequency.value = freq;
       g.gain.value = gain;
       o.connect(g); g.connect(this.gains.ambience);

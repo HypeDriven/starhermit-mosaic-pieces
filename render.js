@@ -837,9 +837,9 @@ export class Renderer {
     const key = this._postKey(size.x, size.y);
     if (key !== this.postKey) { this.postKey = key; this._buildPost(size.x, size.y); }
     if (this.composer) {
-      try { this.composer.render(dt / 1000); } catch (_) { this._postBroken(); this.renderer.render(this.scene, this.camera); }
+      try { (globalThis.GameOptions ? globalThis.GameOptions.draw(this.composer.renderer, () => this.composer.render(dt / 1000)) : this.composer.render(dt / 1000)); } catch (_) { this._postBroken(); (globalThis.GameOptions ? globalThis.GameOptions.draw(this.renderer, () => this.renderer.render(this.scene, this.camera)) : this.renderer.render(this.scene, this.camera)); }
     } else {
-      this.renderer.render(this.scene, this.camera);
+      (globalThis.GameOptions ? globalThis.GameOptions.draw(this.renderer, () => this.renderer.render(this.scene, this.camera)) : this.renderer.render(this.scene, this.camera));
     }
     if (this.onFrame) this.onFrame();
   }
