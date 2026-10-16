@@ -168,3 +168,8 @@ body.left-handed .layout > * { direction: ltr; }
    widen by the same factor. vh/vw lengths inside zoomed layers are divided by the scale. */
 .topbar, .rail, .hud, .goal-thumb, .bottom-tray, .screen, .toast-stack, .fps-meter { zoom: var(--ui-scale, 1); }
 html.ui-scaled .layout { grid-template-columns: calc(260px * var(--ui-scale, 1)) 1fr calc(300px * var(--ui-scale, 1)); }
+/* Long translated labels and option text (German "Aus Voreinstellung (…)") must
+   shrink inside the settings card instead of widening the grid past 390 px. */
+.settings-grid { grid-template-columns: minmax(0, 1fr); }
+.settings-grid label > select { min-width: 0; }
+.settings-grid label { min-width: 0; }

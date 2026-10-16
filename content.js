@@ -4,46 +4,47 @@
 // challenges, daily ruleset, and offline content validators.
 
 import { dailySeed, utcDateStr, normalizeRuleset, genPuzzle, CONTENT_VERSION } from './rules.js';
+import { N } from './lang.js';
 
 export { CONTENT_VERSION };
 
 export const THEMES = Object.freeze([
-  { id: 'default', label: 'Gallery', accent: '#cfa9ff' },
-  { id: 'forest',  label: 'Forest',  accent: '#74c69d' },
-  { id: 'ocean',   label: 'Ocean',   accent: '#4fa8d0' },
-  { id: 'sunset',  label: 'Sunset',  accent: '#f4a259' },
-  { id: 'plum',    label: 'Plum',    accent: '#d04fa8' }
+  { id: 'default', label: N('Gallery'), accent: '#cfa9ff' },
+  { id: 'forest',  label: N('Forest'),  accent: '#74c69d' },
+  { id: 'ocean',   label: N('Ocean'),   accent: '#4fa8d0' },
+  { id: 'sunset',  label: N('Sunset'),  accent: '#f4a259' },
+  { id: 'plum',    label: N('Plum'),    accent: '#d04fa8' }
 ]);
 
 // ---- Learn mode: interactive lessons, one rule at a time ----
 export const LESSONS = Object.freeze([
   {
-    id: 'learn-place', title: 'Placing a piece', seed: 101,
+    id: 'learn-place', title: N('Placing a piece'), seed: 101,
     ruleset: { cols: 2, rows: 2, theme: 'default', label: '2x2' },
     steps: [
-      { text: 'This is the gallery desk. The mosaic above the tray is your goal image.', await: null },
-      { text: 'Select a piece from the tray below (click, tap, or arrow keys + Enter).', await: 'select' },
-      { text: 'Now choose a glowing cell on the board to place it. Pieces snap into place.', await: 'place' },
-      { text: 'Place the remaining pieces to finish the picture.', await: 'complete' }
+      { text: N('This is the gallery desk. The mosaic above the tray is your goal image.'), await: null },
+      { text: N('Select a piece from the tray below (click, tap, or arrow keys + Enter).'), await: 'select' },
+      { text: N('Now choose a glowing cell on the board to place it. Pieces snap into place.'), await: 'place' },
+      { text: N('Place the remaining pieces to finish the picture.'), await: 'complete' }
     ]
   },
   {
-    id: 'learn-rotate', title: 'Rotating a piece', seed: 202,
+    id: 'learn-rotate', title: N('Rotating a piece'), seed: 202,
     ruleset: { cols: 2, rows: 2, needRotation: true, theme: 'forest', label: '2x2 rotate' },
     steps: [
-      { text: 'Some pieces arrive turned. A piece only snaps when upright.', await: null },
-      { text: 'Select a turned piece, then rotate it with R, the Rotate button, or a double-tap.', await: 'rotate' },
-      { text: 'Now place it on its matching cell.', await: 'place' },
-      { text: 'Finish the mosaic.', await: 'complete' }
+      { text: N('Some pieces arrive turned. A piece only snaps when upright.'), await: null },
+      { text: N('Select a turned piece, then rotate it with R, the Rotate button, or a double-tap.'), await: 'rotate' },
+      { text: N('Now place it on its matching cell.'), await: 'place' },
+      { text: N('Finish the mosaic.'), await: 'complete' }
     ]
   },
   {
-    id: 'learn-hint', title: 'Hints and undo', seed: 303,
+    id: 'learn-hint', title: N('Hints and undo'), seed: 303,
     ruleset: { cols: 3, rows: 2, theme: 'ocean', label: '3x2' },
     steps: [
-      { text: 'Stuck? Press H or the Hint button and the gallery shows one legal move.', await: null },
-      { text: 'Use a hint now. Hints cost score but never block completion.', await: 'hint' },
-      { text: 'You can undo a placement with U. Try finishing the mosaic.', await: 'complete' }
+      { text: N('Stuck? Press H or the Hint button and the gallery shows one legal move.'), await: null },
+      { text: N('Use a hint now. Hints cost score but never block completion.'), await: 'hint' },
+      { text: N('You can undo a placement with U. Try finishing the mosaic.'), await: 'complete' }
     ]
   }
 ]);
@@ -90,18 +91,18 @@ export const JOURNEY = Object.freeze(J);
 
 // ---- Practice difficulty presets ----
 export const PRACTICE = Object.freeze([
-  { id: 'relaxed', label: 'Relaxed (3x3)', ruleset: { cols: 3, rows: 3, theme: 'default', label: '3x3' } },
-  { id: 'standard', label: 'Standard (4x4, rotation)', ruleset: { cols: 4, rows: 4, needRotation: true, theme: 'ocean', label: '4x4 rotate' } },
-  { id: 'expert', label: 'Expert (6x6, rotation)', ruleset: { cols: 6, rows: 6, needRotation: true, theme: 'plum', label: '6x6 rotate' } }
+  { id: 'relaxed', label: N('Relaxed (3x3)'), ruleset: { cols: 3, rows: 3, theme: 'default', label: '3x3' } },
+  { id: 'standard', label: N('Standard (4x4, rotation)'), ruleset: { cols: 4, rows: 4, needRotation: true, theme: 'ocean', label: '4x4 rotate' } },
+  { id: 'expert', label: N('Expert (6x6, rotation)'), ruleset: { cols: 6, rows: 6, needRotation: true, theme: 'plum', label: '6x6 rotate' } }
 ]);
 
 // ---- Challenge mode: constrained goals ----
 export const CHALLENGES = Object.freeze([
-  { id: 'ch-moves', label: 'Perfect Fit', desc: 'Finish a 4x4 with no wasted moves. No undo.',
+  { id: 'ch-moves', label: N('Perfect Fit'), desc: N('Finish a 4x4 with no wasted moves. No undo.'),
     seed: 424242, ruleset: { cols: 4, rows: 4, moveLimit: 16, theme: 'sunset', label: '4x4 move-limit' } },
-  { id: 'ch-speed', label: 'Gallery Sprint', desc: 'Finish a 4x4 rotation puzzle in 3 minutes.',
+  { id: 'ch-speed', label: N('Gallery Sprint'), desc: N('Finish a 4x4 rotation puzzle in 3 minutes.'),
     seed: 515151, ruleset: { cols: 4, rows: 4, needRotation: true, timeLimitSec: 180, theme: 'ocean', label: '4x4 speed' } },
-  { id: 'ch-wide', label: 'Panorama', desc: 'A wide 8x4 altered layout.',
+  { id: 'ch-wide', label: N('Panorama'), desc: N('A wide 8x4 altered layout.'),
     seed: 616161, ruleset: { cols: 8, rows: 4, needRotation: true, theme: 'forest', label: '8x4 rotate' } }
 ]);
 

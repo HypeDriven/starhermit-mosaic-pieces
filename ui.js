@@ -7,17 +7,28 @@ import { THEMES, JOURNEY, PRACTICE, CHALLENGES, LESSONS } from './content.js';
 import { PALETTES, scoreComponents } from './rules.js';
 import { PRESETS, CATEGORIES, presetTier, describe } from './gfx.js';
 import { gfxStrings, pickLocale, shStrings } from './gfx-i18n.js';
+import { T, N, lang } from './lang.js';
+const tr = T; // game strings inside functions whose local `T` is the Graphics table
 
-const GFX_LOCALE = pickLocale(typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+// Graphics and account strings follow the game language (i18n.js).
+const gfxLocale = () => pickLocale(lang());
 
 const GLYPHS = ['▲', '◆', '●', '■', '★', '✚'];
 export const ACHIEVEMENTS = Object.freeze([
-  { key: 'first_completion', label: 'First Mosaic', desc: 'Complete your first mosaic.' },
-  { key: 'rotation_master', label: 'Rotation Master', desc: 'Complete a rotation stage without hints.' },
-  { key: 'streak_3', label: 'Gallery Regular', desc: 'Complete mosaics on 3 different days.' },
-  { key: 'journey_20', label: 'Half the Gallery', desc: 'Complete journey stage 20.' },
-  { key: 'long_haul', label: 'Patient Curator', desc: 'Spend 60 total minutes in the gallery (any assists).' }
+  { key: 'first_completion', label: N('First Mosaic'), desc: N('Complete your first mosaic.') },
+  { key: 'rotation_master', label: N('Rotation Master'), desc: N('Complete a rotation stage without hints.') },
+  { key: 'streak_3', label: N('Gallery Regular'), desc: N('Complete mosaics on 3 different days.') },
+  { key: 'journey_20', label: N('Half the Gallery'), desc: N('Complete journey stage 20.') },
+  { key: 'long_haul', label: N('Patient Curator'), desc: N('Spend 60 total minutes in the gallery (any assists).') }
 ]);
+
+/** Player-facing ruleset tag: board size plus its twist (ruleset.label stays the data id). */
+export function rulesetLabel(rs) {
+  const size = `${rs.cols}×${rs.rows}`;
+  const twist = rs.moveLimit ? T('move limit') : rs.timeLimitSec ? T('speed') : rs.needRotation ? T('rotate') : '';
+  return twist ? `${size} ${twist}` : size;
+}
+const esc = (s) => escapeHtml(s);
 
 export class UI {
   constructor() {
@@ -35,8 +46,18 @@ export class UI {
     setTimeout(() => { el.textContent = msg; }, 30);
   }
 
+  /** Re-render the open screen in the current language (Settings → Language). */
+  relabel() {
+    if (!this.screenOpen) return;
+    if (document.getElementById('settings-own')) { this._renderSettingsBoxes(); return; }
+    if (this._last) this._last();
+  }
+  // Remembers how to rebuild the screen being opened, so relabel() can redraw it.
+  _remember(fn) { this._last = fn; this._rerendering = true; try { return fn(); } finally { this._rerendering = false; } }
+
   openScreen(html, { label } = {}) {
-    this.lastFocus = document.activeElement;
+    if (!this._rerendering) this._last = null; // a screen opened elsewhere (e.g. resume prompt) registers itself
+    this.lastFocus = this._rerendering && this.screenOpen ? this.lastFocus : document.activeElement;
     this.root.innerHTML = '';
     const scr = document.createElement('div');
     scr.className = 'screen';
@@ -61,38 +82,39 @@ export class UI {
 
   // ---------- screens ----------
   titleScreen(prog) {
-    const journeyPct = Math.round(100 * prog.journeyCompleted / JOURNEY.length);
-    return this.openScreen(`
+    return this._remember(() => {
+      const journeyPct = Math.round(100 * prog.journeyCompleted / JOURNEY.length);
+      return this.openScreen(`
       <h2>Mosaic Pieces</h2>
-      <p>Assemble interlocking pieces into a picture on the gallery desk — snapping, trays, rotation and optional hints.</p>
+      <p>${esc(T('Assemble interlocking pieces into a picture on the gallery desk — snapping, trays, rotation and optional hints.'))}</p>
       <ul class="menu-list">
-        <li><button type="button" class="btn btn-primary" data-action="nav-mode">Play</button></li>
-        <li><button type="button" class="btn" data-action="start-daily">Daily challenge<small>One shared mosaic per UTC day — ranked.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-journey">Journey<small>${prog.journeyCompleted}/${JOURNEY.length} stages (${journeyPct}%) — next: stage ${prog.nextJourney}.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-profile">Profile &amp; achievements<small>${prog.achievements.length}/${ACHIEVEMENTS.length} achievements unlocked.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-leaderboard">Leaderboards</button></li>
-        <li><button type="button" class="btn" data-action="nav-settings">Settings<small>Audio, graphics and accessibility.</small></button></li>
+        <li><button type="button" class="btn btn-primary" data-action="nav-mode">${esc(T('Play'))}</button></li>
+        <li><button type="button" class="btn" data-action="start-daily">${esc(T('Daily challenge'))}<small>${esc(T('One shared mosaic per UTC day — ranked.'))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-journey">${esc(T('Journey'))}<small>${esc(T('{done}/{total} stages ({pct}%) — next: stage {next}.', { done: prog.journeyCompleted, total: JOURNEY.length, pct: journeyPct, next: prog.nextJourney }))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-profile">${esc(T('Profile & achievements'))}<small>${esc(T('{n}/{total} achievements unlocked.', { n: prog.achievements.length, total: ACHIEVEMENTS.length }))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-leaderboard">${esc(T('Leaderboards'))}</button></li>
+        <li><button type="button" class="btn" data-action="nav-settings">${esc(T('Settings'))}<small>${esc(T('Audio, graphics and accessibility.'))}</small></button></li>
         ${this._accountItems(prog.account)}
-      </ul>`, { label: 'Title' });
+      </ul>`, { label: T('Title') });
+    });
   }
 
   // StarHermit account entries: sign-in (only offered on *.starhermit.com
   // without a token) and invite (only when signed in). Localized.
   _accountItems(acct = {}) {
-    const S = shStrings(GFX_LOCALE);
-    const item = (action, label, sub) => `<li lang="${GFX_LOCALE}"><button type="button" class="btn" data-action="${action}">${escapeHtml(label)}<small>${escapeHtml(sub)}</small></button></li>`;
+    const S = shStrings(gfxLocale());
+    const item = (action, label, sub) => `<li><button type="button" class="btn" data-action="${action}">${escapeHtml(label)}<small>${escapeHtml(sub)}</small></button></li>`;
     return (acct.signIn ? item('sh-sign-in', S.signIn, S.signInSub) : '') +
       (acct.invite ? item('sh-invite', S.invite, S.inviteSub) : '');
   }
 
   /** Localized StarHermit strings for the app (toasts). */
-  shText(key) { return shStrings(GFX_LOCALE)[key]; }
+  shText(key) { return shStrings(gfxLocale())[key]; }
 
   toast(msg) {
     const t = document.createElement('div');
     t.className = 'achievement-toast';
     t.setAttribute('role', 'status');
-    t.lang = GFX_LOCALE;
     t.textContent = msg;
     this._pushToast(t, 3500);
   }
@@ -112,169 +134,204 @@ export class UI {
   }
 
   modeScreen() {
-    return this.openScreen(`
-      <h2>Choose a mode</h2>
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('Choose a mode'))}</h2>
       <ul class="menu-list">
-        <li><button type="button" class="btn" data-action="nav-learn">Learn<small>Interactive lessons — one rule at a time. ~3 min.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-journey">Journey<small>40 authored stages with growing mechanics. Ranked progression.</small></button></li>
-        <li><button type="button" class="btn" data-action="start-daily">Daily<small>Shared seed per UTC day. Ranked, no undo.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-practice">Practice<small>Your difficulty, restart and undo, never ranked.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-challenge">Challenge<small>Move limits, speed targets, altered layouts.</small></button></li>
-        <li><button type="button" class="btn" data-action="nav-leaderboard">Score chase<small>Global and friends score comparison.</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-learn">${esc(T('Learn'))}<small>${esc(T('Interactive lessons — one rule at a time. ~3 min.'))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-journey">${esc(T('Journey'))}<small>${esc(T('40 authored stages with growing mechanics. Ranked progression.'))}</small></button></li>
+        <li><button type="button" class="btn" data-action="start-daily">${esc(T('Daily'))}<small>${esc(T('Shared seed per UTC day. Ranked, no undo.'))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-practice">${esc(T('Practice'))}<small>${esc(T('Your difficulty, restart and undo, never ranked.'))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-challenge">${esc(T('Challenge'))}<small>${esc(T('Move limits, speed targets, altered layouts.'))}</small></button></li>
+        <li><button type="button" class="btn" data-action="nav-leaderboard">${esc(T('Score chase'))}<small>${esc(T('Global and friends score comparison.'))}</small></button></li>
       </ul>
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-title">Back</button></div>`, { label: 'Mode select' });
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-title">${esc(T('Back'))}</button></div>`, { label: T('Mode select') }));
   }
 
   learnScreen() {
-    return this.openScreen(`
-      <h2>Learn</h2>
-      <p>Each lesson introduces one rule and asks you to perform it.</p>
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('Learn'))}</h2>
+      <p>${esc(T('Each lesson introduces one rule and asks you to perform it.'))}</p>
       <ul class="menu-list">
-        ${LESSONS.map((l, i) => `<li><button type="button" class="btn" data-action="start-lesson" data-index="${i}">${l.title}<small>${l.ruleset.label}</small></button></li>`).join('')}
+        ${LESSONS.map((l, i) => `<li><button type="button" class="btn" data-action="start-lesson" data-index="${i}">${esc(T(l.title))}<small>${esc(rulesetLabel(l.ruleset))}</small></button></li>`).join('')}
       </ul>
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">Back</button></div>`, { label: 'Learn' });
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">${esc(T('Back'))}</button></div>`, { label: T('Learn') }));
   }
 
   journeyScreen(prog) {
-    const btn = (s) => {
-      const done = prog.journeyCompleted >= s.index;
-      const unlocked = s.index <= prog.nextJourney;
-      return `<li><button type="button" class="btn" data-action="start-stage" data-index="${s.index}" ${unlocked ? '' : 'disabled'}>
-        ${done ? '✓ ' : ''}Stage ${s.index}${s.mastery ? ' ★' : ''}<small>${s.ruleset.label}${s.mastery ? ' — mastery' : ''}${unlocked ? '' : ' — locked'}</small></button></li>`;
-    };
-    return this.openScreen(`
-      <h2>Journey</h2>
-      <p>${prog.journeyCompleted}/${JOURNEY.length} complete. ★ marks mastery stages.</p>
+    return this._remember(() => {
+      const btn = (s) => {
+        const done = prog.journeyCompleted >= s.index;
+        const unlocked = s.index <= prog.nextJourney;
+        const sub = [rulesetLabel(s.ruleset), s.mastery ? T('mastery') : '', unlocked ? '' : T('locked')].filter(Boolean).join(' — ');
+        return `<li><button type="button" class="btn" data-action="start-stage" data-index="${s.index}" ${unlocked ? '' : 'disabled'}>
+        ${done ? '✓ ' : ''}${esc(T('Stage {n}', { n: s.index }))}${s.mastery ? ' ★' : ''}<small>${esc(sub)}</small></button></li>`;
+      };
+      return this.openScreen(`
+      <h2>${esc(T('Journey'))}</h2>
+      <p>${esc(T('{done}/{total} complete. ★ marks mastery stages.', { done: prog.journeyCompleted, total: JOURNEY.length }))}</p>
       <ul class="menu-list" style="max-height:50vh;overflow-y:auto">${JOURNEY.map(btn).join('')}</ul>
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">Back</button></div>`, { label: 'Journey' });
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">${esc(T('Back'))}</button></div>`, { label: T('Journey') });
+    });
   }
 
   practiceScreen() {
-    return this.openScreen(`
-      <h2>Practice</h2>
-      <p>Relaxed play: restart and undo allowed, never ranked.</p>
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('Practice'))}</h2>
+      <p>${esc(T('Relaxed play: restart and undo allowed, never ranked.'))}</p>
       <ul class="menu-list">
-        ${PRACTICE.map(p => `<li><button type="button" class="btn" data-action="start-practice" data-id="${p.id}">${p.label}</button></li>`).join('')}
+        ${PRACTICE.map(p => `<li><button type="button" class="btn" data-action="start-practice" data-id="${p.id}">${esc(T(p.label))}</button></li>`).join('')}
       </ul>
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">Back</button></div>`, { label: 'Practice' });
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">${esc(T('Back'))}</button></div>`, { label: T('Practice') }));
   }
 
   challengeScreen() {
-    return this.openScreen(`
-      <h2>Challenge</h2>
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('Challenge'))}</h2>
       <ul class="menu-list">
-        ${CHALLENGES.map(c => `<li><button type="button" class="btn" data-action="start-challenge" data-id="${c.id}">${c.label}<small>${c.desc}</small></button></li>`).join('')}
+        ${CHALLENGES.map(c => `<li><button type="button" class="btn" data-action="start-challenge" data-id="${c.id}">${esc(T(c.label))}<small>${esc(T(c.desc))}</small></button></li>`).join('')}
       </ul>
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">Back</button></div>`, { label: 'Challenge' });
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-mode">${esc(T('Back'))}</button></div>`, { label: T('Challenge') }));
   }
 
   // Mode setup: rules, expected duration, assists, ranked — before commitment.
-  setupScreen(info) {
-    return this.openScreen(`
-      <h2>${info.title}</h2>
-      <p>${info.desc}</p>
+  // infoFn builds the (translated) info, so a language change re-renders it.
+  setupScreen(infoFn) {
+    return this._remember(() => {
+      const info = infoFn();
+      return this.openScreen(`
+      <h2>${esc(info.title)}</h2>
+      <p>${esc(info.desc)}</p>
       <table class="score">
-        <tr><th>Board</th><td>${info.ruleset.cols}×${info.ruleset.rows}</td></tr>
-        <tr><th>Rotation</th><td>${info.ruleset.needRotation ? 'Yes' : 'No'}</td></tr>
-        <tr><th>Move limit</th><td>${info.ruleset.moveLimit || 'None'}</td></tr>
-        <tr><th>Time limit</th><td>${info.ruleset.timeLimitSec ? info.ruleset.timeLimitSec + ' s' : 'None'}</td></tr>
-        <tr><th>Undo</th><td>${info.undo ? 'Allowed' : 'Not allowed'}</td></tr>
-        <tr><th>Hints</th><td>Available (cost score)</td></tr>
-        <tr><th>Ranked</th><td>${info.ranked ? (info.rankedLabel || 'Yes') : 'No'}</td></tr>
-        <tr><th>Expected duration</th><td>${info.duration}</td></tr>
+        <tr><th>${esc(T('Board'))}</th><td>${info.ruleset.cols}×${info.ruleset.rows}</td></tr>
+        <tr><th>${esc(T('Rotation'))}</th><td>${esc(info.ruleset.needRotation ? T('Yes') : T('No'))}</td></tr>
+        <tr><th>${esc(T('Move limit'))}</th><td>${esc(info.ruleset.moveLimit || T('None'))}</td></tr>
+        <tr><th>${esc(T('Time limit'))}</th><td>${esc(info.ruleset.timeLimitSec ? T('{n} s', { n: info.ruleset.timeLimitSec }) : T('None'))}</td></tr>
+        <tr><th>${esc(T('Undo'))}</th><td>${esc(info.undo ? T('Allowed') : T('Not allowed'))}</td></tr>
+        <tr><th>${esc(T('Hints'))}</th><td>${esc(T('Available (cost score)'))}</td></tr>
+        <tr><th>${esc(T('Ranked'))}</th><td>${esc(info.ranked ? (info.rankedLabel || T('Yes')) : T('No'))}</td></tr>
+        <tr><th>${esc(T('Expected duration'))}</th><td>${esc(info.duration)}</td></tr>
       </table>
       <div class="row">
-        <button type="button" class="btn btn-primary" data-action="confirm-start">Start</button>
-        <button type="button" class="btn btn-ghost" data-action="nav-mode">Back</button>
-      </div>`, { label: 'Mode setup' });
+        <button type="button" class="btn btn-primary" data-action="confirm-start">${esc(T('Start'))}</button>
+        <button type="button" class="btn btn-ghost" data-action="nav-mode">${esc(T('Back'))}</button>
+      </div>`, { label: T('Mode setup') });
+    });
   }
 
   pauseScreen(settings) {
-    return this.openScreen(`
-      <h2>Paused</h2>
-      <div class="row"><button type="button" class="btn btn-primary" data-action="resume">Resume</button></div>
-      <h3>Audio</h3>
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('Paused'))}</h2>
+      <div class="row"><button type="button" class="btn btn-primary" data-action="resume">${esc(T('Resume'))}</button></div>
+      <h3>${esc(T('Audio'))}</h3>
       ${this._volumeSliders(settings)}
       <div class="row">
-        <button type="button" class="btn" data-action="nav-settings">Settings &amp; accessibility</button>
-        <button type="button" class="btn" data-action="nav-help">Help</button>
-        <button type="button" class="btn btn-ghost" data-action="quit-round">Leave round</button>
-      </div>`, { label: 'Paused' });
+        <button type="button" class="btn" data-action="nav-settings">${esc(T('Settings & accessibility'))}</button>
+        <button type="button" class="btn" data-action="nav-help">${esc(T('Help'))}</button>
+        <button type="button" class="btn btn-ghost" data-action="quit-round">${esc(T('Leave round'))}</button>
+      </div>`, { label: T('Paused') }));
   }
 
-  resultsScreen(state, extra) {
-    const c = scoreComponents(state);
-    const win = state.status === 'complete';
-    const rows = [
-      ['Pieces placed', c.placement],
-      ['Completion bonus', c.completion],
-      ['Efficiency bonus', c.efficiency],
-      ['Hints used', -c.hintCost],
-      ['Undos used', -c.undoCost],
-      ['Invalid actions', -c.invalidPenalty]
-    ];
-    return this.openScreen(`
-      <h2>${win ? 'Mosaic complete!' : 'Round over'}</h2>
-      <p>${win ? 'The picture hangs on the gallery wall.' : 'Reason: ' + (state.terminalReason || 'abandoned')}</p>
+  // extraFn returns extra results HTML (progress note, leaderboard line) in the current language.
+  resultsScreen(state, extraFn) {
+    return this._remember(() => {
+      const c = scoreComponents(state);
+      const win = state.status === 'complete';
+      const rows = [
+        [T('Pieces placed'), c.placement],
+        [T('Completion bonus'), c.completion],
+        [T('Efficiency bonus'), c.efficiency],
+        [T('Hints used'), -c.hintCost],
+        [T('Undos used'), -c.undoCost],
+        [T('Invalid actions'), -c.invalidPenalty]
+      ];
+      const reasons = { 'time-limit': N('time ran out'), 'move-limit': N('out of moves'), abandoned: N('abandoned') };
+      const reason = state.terminalReason || 'abandoned';
+      const extra = typeof extraFn === 'function' ? extraFn() : (extraFn || '');
+      return this.openScreen(`
+      <h2>${esc(win ? T('Mosaic complete!') : T('Round over'))}</h2>
+      <p>${esc(win ? T('The picture hangs on the gallery wall.') : T('Reason: {reason}', { reason: reasons[reason] ? T(reasons[reason]) : reason }))}</p>
       <table class="score">
-        ${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v > 0 ? '+' : ''}${v}</td></tr>`).join('')}
-        <tr><th>Total score</th><td><strong>${c.total}</strong></td></tr>
-        <tr><th>Time</th><td>${formatTime(state.elapsedMs)}</td></tr>
-        <tr><th>Moves</th><td>${state.moves}</td></tr>
-        <tr><th>Tiles matching the goal image</th><td>${state.pieces.filter(p => p.placed && p.placedCell === p.id).length}/${state.pieces.length}</td></tr>
+        ${rows.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${v > 0 ? '+' : ''}${v}</td></tr>`).join('')}
+        <tr><th>${esc(T('Total score'))}</th><td><strong>${c.total}</strong></td></tr>
+        <tr><th>${esc(T('Time'))}</th><td>${formatTime(state.elapsedMs)}</td></tr>
+        <tr><th>${esc(T('Moves'))}</th><td>${state.moves}</td></tr>
+        <tr><th>${esc(T('Tiles matching the goal image'))}</th><td>${state.pieces.filter(p => p.placed && p.placedCell === p.id).length}/${state.pieces.length}</td></tr>
       </table>
       ${extra || ''}
       <div class="row">
-        <button type="button" class="btn btn-primary" data-action="retry">Play again</button>
-        ${win ? '<button type="button" class="btn" data-action="next-recommended">Next recommended</button>' : ''}
-        <button type="button" class="btn btn-ghost" data-action="nav-title">Title</button>
-      </div>`, { label: 'Results' });
+        <button type="button" class="btn btn-primary" data-action="retry">${esc(T('Play again'))}</button>
+        ${win ? `<button type="button" class="btn" data-action="next-recommended">${esc(T('Next recommended'))}</button>` : ''}
+        <button type="button" class="btn btn-ghost" data-action="nav-title">${esc(T('Title'))}</button>
+      </div>`, { label: T('Results') });
+    });
   }
 
-  helpScreen(bindings) {
-    return this.openScreen(`
-      <h2>How to play</h2>
-      <p>Sort the tray pieces, read the edge colors and glyphs, and drag each piece onto its matching board cell. Pieces snap when legal. Complete connected groups to finish the picture.</p>
-      <h3>Controls</h3>
+  // bindingsFn returns the keyboard help line in the current language.
+  helpScreen(bindingsFn) {
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('How to play'))}</h2>
+      <p>${esc(T('Sort the tray pieces, read the edge colors and glyphs, and drag each piece onto its matching board cell. Pieces snap when legal. Complete connected groups to finish the picture.'))}</p>
+      <h3>${esc(T('Controls'))}</h3>
       <ul>
-        <li><strong>Pointer / touch:</strong> tap a piece to select, tap a glowing cell to place. Drag pieces directly. Double-tap a piece to rotate.</li>
-        <li><strong>Keyboard:</strong> ${bindings}</li>
-        <li>Every action gives immediate visual and sonic feedback; illegal targets explain why.</li>
+        <li>${T('<strong>Pointer / touch:</strong> tap a piece to select, tap a glowing cell to place. Drag pieces directly. Double-tap a piece to rotate.')}</li>
+        <li>${T('<strong>Keyboard:</strong> {keys}', { keys: esc(typeof bindingsFn === 'function' ? bindingsFn() : bindingsFn) })}</li>
+        <li>${esc(T('Every action gives immediate visual and sonic feedback; illegal targets explain why.'))}</li>
       </ul>
-      <h3>Scoring</h3>
-      <p>+100 per placed piece, completion and efficiency bonuses; hints, undos and invalid actions cost points. Time is tracked separately so relaxed play stays valid.</p>
-      <div class="row"><button type="button" class="btn btn-primary" data-action="close-screen">Close</button></div>`, { label: 'Help' });
+      <h3>${esc(T('Scoring'))}</h3>
+      <p>${esc(T('+100 per placed piece, completion and efficiency bonuses; hints, undos and invalid actions cost points. Time is tracked separately so relaxed play stays valid.'))}</p>
+      <div class="row"><button type="button" class="btn btn-primary" data-action="close-screen">${esc(T('Close'))}</button></div>`, { label: T('Help') }));
   }
 
+  // The game's own settings live in three boxes (#settings-own, #gfx-own,
+  // #settings-own-a11y) that a language change redraws in place; the shared
+  // Language / Sound / Report sections (game-options.js) mount after #gfx-own
+  // inside #gfx-section and are never redrawn.
   settingsScreen(settings, gfx) {
+    this._settingsArgs = { settings, gfx };
+    const scr = this._remember(() => this.openScreen(`
+      <div id="settings-own"></div>
+      <section id="gfx-section" class="gfx-section" aria-labelledby="gfx-h"><div id="gfx-own"></div></section>
+      <div id="settings-own-a11y"></div>`, { label: T('Settings') }));
+    this._renderSettingsBoxes();
+    const first = scr.querySelector('button, input, select');
+    if (first) first.focus({ preventScroll: true });
+    return scr;
+  }
+  _renderSettingsBoxes() {
+    const { settings, gfx } = this._settingsArgs || {};
+    const top = document.getElementById('settings-own');
+    if (!top || !settings) return;
     const chk = (k) => settings[k] ? 'checked' : '';
-    return this.openScreen(`
-      <h2>Settings</h2>
-      <h3>Audio</h3>
+    top.innerHTML = `
+      <h2>${esc(T('Settings'))}</h2>
+      <h3>${esc(T('Audio'))}</h3>
       ${this._volumeSliders(settings)}
       <div class="settings-grid">
-        <label>Mute all <input type="checkbox" data-setting="muted" ${chk('muted')}></label>
-      </div>
-      ${this._gfxSection(settings, gfx)}
-      <h3>Accessibility</h3>
+        <label>${esc(T('Mute all'))} <input type="checkbox" data-setting="muted" ${chk('muted')}></label>
+      </div>`;
+    document.getElementById('gfx-own').innerHTML = this._gfxSection(settings, gfx);
+    document.getElementById('settings-own-a11y').innerHTML = `
+      <h3>${esc(T('Accessibility'))}</h3>
       <div class="settings-grid">
-        <label>Reduced motion <input type="checkbox" data-setting="reducedMotion" ${chk('reducedMotion')}></label>
-        <label>High contrast <input type="checkbox" data-setting="highContrast" ${chk('highContrast')}></label>
-        <label>Larger text <input type="checkbox" data-setting="largeText" ${chk('largeText')}></label>
-        <label>Color-vision-safe palette <input type="checkbox" data-setting="cvdPalette" ${chk('cvdPalette')}></label>
-        <label>Hold-to-drag (off = toggle select) <input type="checkbox" data-setting="holdToDrag" ${chk('holdToDrag')}></label>
-        <label>Left-handed layout <input type="checkbox" data-setting="leftHanded" ${chk('leftHanded')}></label>
-        <label>Timing assistance (double time limits) <input type="checkbox" data-setting="timingAssist" ${chk('timingAssist')}></label>
+        <label>${esc(T('Reduced motion'))} <input type="checkbox" data-setting="reducedMotion" ${chk('reducedMotion')}></label>
+        <label>${esc(T('High contrast'))} <input type="checkbox" data-setting="highContrast" ${chk('highContrast')}></label>
+        <label>${esc(T('Larger text'))} <input type="checkbox" data-setting="largeText" ${chk('largeText')}></label>
+        <label>${esc(T('Color-vision-safe palette'))} <input type="checkbox" data-setting="cvdPalette" ${chk('cvdPalette')}></label>
+        <label>${esc(T('Hold-to-drag (off = toggle select)'))} <input type="checkbox" data-setting="holdToDrag" ${chk('holdToDrag')}></label>
+        <label>${esc(T('Left-handed layout'))} <input type="checkbox" data-setting="leftHanded" ${chk('leftHanded')}></label>
+        <label>${esc(T('Timing assistance (double time limits)'))} <input type="checkbox" data-setting="timingAssist" ${chk('timingAssist')}></label>
       </div>
       <div class="row">
-        <button type="button" class="btn" data-action="replay-tutorial">Replay tutorial</button>
-        <button type="button" class="btn btn-primary" data-action="close-screen">Done</button>
-      </div>`, { label: 'Settings' });
+        <button type="button" class="btn" data-action="replay-tutorial">${esc(T('Replay tutorial'))}</button>
+        <button type="button" class="btn btn-primary" data-action="close-screen">${esc(T('Done'))}</button>
+      </div>`;
+    // values are filled in after insertion by syncGfx()
+    this.syncGfx(gfx.saved, gfx.info);
   }
 
   // ---------- Graphics section (localized; controls carry stable ids + data-gfx) ----------
   _gfxSection(settings, gfx) {
-    const T = gfxStrings(GFX_LOCALE);
+    const T = gfxStrings(gfxLocale());
     const info = gfx.info;
     const opt = (v, label) => `<option value="${v}">${escapeHtml(label)}</option>`;
     const cats = Object.entries(CATEGORIES).map(([cat, tiers]) => `
@@ -284,12 +341,11 @@ export class UI {
             ${tiers.map(t => opt(t, T.tier[t])).join('')}
           </select></label>`).join('');
     const html = `
-      <section id="gfx-section" class="gfx-section" lang="${GFX_LOCALE}" aria-labelledby="gfx-h">
       <h3 id="gfx-h">${escapeHtml(T.graphics)}</h3>
       <div class="settings-grid">
-        <label>Theme
+        <label>${escapeHtml(tr('Theme'))}
           <select data-setting="theme">
-            ${THEMES.map(t => `<option value="${t.id}" ${settings.theme === t.id ? 'selected' : ''}>${t.label}</option>`).join('')}
+            ${THEMES.map(t => `<option value="${t.id}" ${settings.theme === t.id ? 'selected' : ''}>${escapeHtml(tr(t.label))}</option>`).join('')}
           </select></label>
         <label for="gfx-preset">${escapeHtml(T.quality)}
           <select id="gfx-preset" data-gfx="preset">
@@ -303,10 +359,7 @@ export class UI {
         <label for="gfx-fps">${escapeHtml(T.showFps)} <input type="checkbox" id="gfx-fps" data-gfx="show_fps"></label>
       </div>
       <p id="gfx-summary" class="gfx-summary" aria-live="off"></p>
-      <p id="gfx-note" class="gfx-note" hidden></p>
-      </section>`;
-    // values are filled in after insertion by syncGfx()
-    queueMicrotask(() => this.syncGfx(gfx.saved, info));
+      <p id="gfx-note" class="gfx-note" hidden></p>`;
     return html;
   }
 
@@ -314,7 +367,7 @@ export class UI {
   syncGfx(saved, info) {
     const sec = document.getElementById('gfx-section');
     if (!sec) return;
-    const T = gfxStrings(GFX_LOCALE);
+    const T = gfxStrings(gfxLocale());
     const s = saved || {};
     const preset = sec.querySelector('#gfx-preset');
     preset.value = PRESETS.includes(s.preset) ? s.preset : 'auto';
@@ -334,7 +387,7 @@ export class UI {
   updateGfxSummary(info) {
     const el = document.getElementById('gfx-summary');
     if (!el) return;
-    const T = gfxStrings(GFX_LOCALE);
+    const T = gfxStrings(gfxLocale());
     const text = [info.gpu || T.sum.unknownGpu, describe(info.resolved, info.pixels, T.sum)].join(' · ');
     if (el.textContent !== text) el.textContent = text;
     const note = document.getElementById('gfx-note');
@@ -343,33 +396,38 @@ export class UI {
     note.textContent = msg;
   }
 
-  profileScreen(prog, displayName, meta = {}) {
-    const who = meta.hosted
-      ? `Signed in as <strong>${escapeHtml(displayName)}</strong> — progress syncs to your account (status sits next to the clock).`
-      : `Playing as <strong>${escapeHtml(displayName)}</strong> (local guest profile; sign-in is offered by the host shell).`;
-    return this.openScreen(`
-      <h2>Profile</h2>
+  profileScreen(prog, displayNameFn, meta = {}) {
+    return this._remember(() => {
+      const displayName = typeof displayNameFn === 'function' ? displayNameFn() : displayNameFn;
+      const who = meta.hosted
+        ? T('Signed in as <strong>{name}</strong> — progress syncs to your account (status sits next to the clock).', { name: escapeHtml(displayName) })
+        : T('Playing as <strong>{name}</strong> (local guest profile; sign-in is offered by the host shell).', { name: escapeHtml(displayName) });
+      return this.openScreen(`
+      <h2>${esc(T('Profile'))}</h2>
       <p>${who}</p>
-      <h3>Achievements</h3>
+      <h3>${esc(T('Achievements'))}</h3>
       <ul class="menu-list">
-        ${ACHIEVEMENTS.map(a => `<li><button type="button" class="btn" disabled>${prog.achievements.includes(a.key) ? '🏆 ' : '🔒 '}${a.label}<small>${a.desc}</small></button></li>`).join('')}
+        ${ACHIEVEMENTS.map(a => `<li><button type="button" class="btn" disabled>${prog.achievements.includes(a.key) ? '🏆 ' : '🔒 '}${esc(T(a.label))}<small>${esc(T(a.desc))}</small></button></li>`).join('')}
       </ul>
-      <p>Total gallery time: ${formatTime(prog.totalTimeMs || 0)}</p>
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-title">Back</button></div>`, { label: 'Profile' });
+      <p>${esc(T('Total gallery time: {time}', { time: formatTime(prog.totalTimeMs || 0) }))}</p>
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-title">${esc(T('Back'))}</button></div>`, { label: T('Profile') });
+    });
   }
 
-  leaderboardScreen(html) {
-    return this.openScreen(`
-      <h2>Score chase</h2>
-      ${html}
-      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-title">Back</button></div>`, { label: 'Leaderboards' });
+  // htmlFn returns the board HTML in the current language.
+  leaderboardScreen(htmlFn) {
+    return this._remember(() => this.openScreen(`
+      <h2>${esc(T('Score chase'))}</h2>
+      ${typeof htmlFn === 'function' ? htmlFn() : htmlFn}
+      <div class="row"><button type="button" class="btn btn-ghost" data-action="nav-title">${esc(T('Back'))}</button></div>`, { label: T('Leaderboards') }));
   }
 
   _volumeSliders(settings) {
     const v = settings.volumes;
+    const names = { music: N('Music'), effects: N('Effects'), ambience: N('Ambience'), voice: N('Voice') };
     return `<div class="settings-grid">
       ${['music', 'effects', 'ambience', 'voice'].map(b =>
-        `<label>${b[0].toUpperCase() + b.slice(1)} <input type="range" min="0" max="1" step="0.05" value="${v[b]}" data-volume="${b}"></label>`).join('')}
+        `<label>${esc(T(names[b]))} <input type="range" min="0" max="1" step="0.05" value="${v[b]}" data-volume="${b}"></label>`).join('')}
     </div>`;
   }
 
@@ -378,16 +436,16 @@ export class UI {
   updateHud(state, modeLabel, timeLeftSec) {
     document.getElementById('hud-mode').textContent = modeLabel;
     const placed = state.pieces.filter(p => p.placed).length;
-    document.getElementById('hud-placed').textContent = `${placed}/${state.pieces.length} placed`;
+    document.getElementById('hud-placed').textContent = T('{n}/{total} placed', { n: placed, total: state.pieces.length });
     document.getElementById('hud-time').textContent = formatTime(state.elapsedMs);
-    document.getElementById('hud-score').textContent = 'Score ' + scoreComponents(state).total;
+    document.getElementById('hud-score').textContent = T('Score {n}', { n: scoreComponents(state).total });
     const lim = document.getElementById('hud-limit');
     if (state.ruleset.moveLimit > 0) {
       const left = state.ruleset.moveLimit - state.moves;
-      lim.textContent = `${left} moves left`;
+      lim.textContent = T('{n} moves left', { n: left });
       lim.classList.toggle('warn', left <= 3);
     } else if (timeLeftSec != null) {
-      lim.textContent = `${Math.max(0, Math.ceil(timeLeftSec))}s left`;
+      lim.textContent = T('{n}s left', { n: Math.max(0, Math.ceil(timeLeftSec)) });
       lim.classList.toggle('warn', timeLeftSec <= 30);
     } else {
       lim.textContent = '';
@@ -411,8 +469,9 @@ export class UI {
       b.setAttribute('aria-pressed', selectedId === id ? 'true' : 'false');
       b.style.background = palette[p.colorIndex % palette.length];
       b.textContent = GLYPHS[p.colorIndex % GLYPHS.length];
-      b.setAttribute('aria-label', `Piece ${id + 1}, ${GLYPHS[p.colorIndex % GLYPHS.length]} tile` +
-        (p.placed ? ', placed' : (p.rot ? `, rotated ${p.rot * 90} degrees` : ', upright') + (selectedId === id ? ', selected' : '')));
+      const glyph = GLYPHS[p.colorIndex % GLYPHS.length];
+      const stateTxt = p.placed ? T('placed') : (p.rot ? T('rotated {deg} degrees', { deg: p.rot * 90 }) : T('upright'));
+      b.setAttribute('aria-label', [T('Piece {n}, {glyph} tile', { n: id + 1, glyph }), stateTxt, !p.placed && selectedId === id ? T('selected') : ''].filter(Boolean).join(', '));
       li.appendChild(b);
       list.appendChild(li);
     }
@@ -433,10 +492,9 @@ export class UI {
       const here = filled ? state.pieces.find(p => p.id === state.occupied[c]) : null;
       const matches = here ? here.id === c : false;
       b.textContent = filled ? (matches ? GLYPHS[here.colorIndex % GLYPHS.length] : GLYPHS[here.colorIndex % GLYPHS.length] + '≠') : goalGlyph;
-      b.setAttribute('aria-label', `Cell column ${x} row ${y}, goal ${goalGlyph} tile` +
-        (filled
-          ? `, holds piece ${here.id + 1}, ${matches ? 'matches the goal' : 'does not match the goal'}`
-          : (candidateCells.includes(c) ? ', legal target' : '')));
+      b.setAttribute('aria-label', [T('Cell column {x} row {y}, goal {glyph} tile', { x, y, glyph: goalGlyph }),
+        filled ? T('holds piece {n}', { n: here.id + 1 }) : '', filled ? (matches ? T('matches the goal') : T('does not match the goal')) : '',
+        !filled && candidateCells.includes(c) ? T('legal target') : ''].filter(Boolean).join(', '));
       b.disabled = filled;
       grid.appendChild(b);
     }
@@ -445,7 +503,7 @@ export class UI {
   toastAchievement(label) {
     const t = document.createElement('div');
     t.className = 'achievement-toast';
-    t.textContent = '🏆 Achievement unlocked: ' + label;
+    t.textContent = '🏆 ' + T('Achievement unlocked: {name}', { name: T(label) });
     this._pushToast(t, 4000);
   }
 

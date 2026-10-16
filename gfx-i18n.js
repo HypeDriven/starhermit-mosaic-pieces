@@ -1,8 +1,8 @@
 'use strict';
 
-// Mosaic Pieces — strings for the Graphics settings section, in every
-// required locale. The rest of the game is en-US only (spec §10); this panel
-// picks its locale from navigator.language.
+// Mosaic Pieces — strings for the Graphics settings section and the
+// StarHermit account entries, in every required locale; looked up in the game
+// language (i18n.js, Settings → Language; spec §10).
 
 const en = {
   graphics: 'Graphics', quality: 'Quality', auto: 'Auto (detected: {tier})',

@@ -9,6 +9,34 @@
 // offline cache. Standalone (no token) no network request is ever made: local
 // clock, local bests and achievements, no telemetry.
 
+import { compareResults } from './rules.js';
+import { T } from './lang.js';
+
+/** Merge two progress records (this device's and another device's save) so
+ *  neither side's progress is lost. Pure; exported for tests. */
+export function mergeProgress(local, remote) {
+  const a = local || {};
+  const b = remote || {};
+  const num = (x) => (Number.isFinite(x) ? x : 0);
+  const best = { ...(b.best || {}) };
+  for (const [board, mine] of Object.entries(a.best || {})) {
+    const theirs = best[board];
+    const better = !theirs || !mine ? (mine || theirs)
+      : compareResults(
+        { score: mine.score, completed: true, invalidActions: mine.invalidActions || 0, elapsedMs: mine.elapsedMs || 0, sessionId: 'a' },
+        { score: theirs.score, completed: true, invalidActions: theirs.invalidActions || 0, elapsedMs: theirs.elapsedMs || 0, sessionId: 'b' }) <= 0 ? mine : theirs;
+    best[board] = better;
+  }
+  return {
+    ...b, ...a,
+    journeyCompleted: Math.max(num(a.journeyCompleted), num(b.journeyCompleted)),
+    achievements: [...new Set([...(a.achievements || []), ...(b.achievements || [])])],
+    daysPlayed: [...new Set([...(a.daysPlayed || []), ...(b.daysPlayed || [])])].sort(),
+    totalTimeMs: Math.max(num(a.totalTimeMs), num(b.totalTimeMs)),
+    best,
+  };
+}
+
 function sdk() {
   const w = typeof window !== 'undefined' ? window : globalThis;
   return (w && w.StarHermit) || null;
@@ -24,8 +52,11 @@ export class Platform {
     this.nickname = null;
     this.onSyncStatus = null; // app hooks the visible status slot
     this.onAuth = null;       // app re-renders sign-in / invite buttons
+    this.onConflict = null;   // app merges another device's save: (remoteDoc) => mergedDoc
     if (this.sh) {
       this.sh.on('saved', (ok) => this.setSyncStatus(ok ? 'synced' : 'offline'));
+      // A conditional write lost to another device's save: reload, merge, save the merge.
+      this.sh.on('saveconflict', () => { this.resolveConflict(); });
       this.sh.on('auth', (a) => {
         if (!a.signedIn) { this.nickname = null; this.setSyncStatus('local'); }
         if (this.onAuth) this.onAuth(a);
@@ -84,7 +115,7 @@ export class Platform {
   async profileFor(userId) {
     const id = String(userId);
     const p = this.hosted ? await this.sh.profile(id) : null;
-    return p ? p.displayName : 'Player ' + id.slice(0, 6);
+    return p ? p.displayName : T('Player {id}', { id: id.slice(0, 6) });
   }
   async loadProfile() {
     if (!this.hosted) return null;
@@ -117,6 +148,14 @@ export class Platform {
     this.clearPendingSave();
     if (!this.hosted || !doc) return;
     await this.sh.writeSave(JSON.stringify(doc), { keepalive: true }); // 'saved' event sets the status
+  }
+
+  async resolveConflict() {
+    if (!this.hosted) return;
+    this.setSyncStatus('saving');
+    const remote = await this.sh.loadJSON();
+    const doc = this.onConflict ? this.onConflict(remote && typeof remote === 'object' ? remote : null) : null;
+    if (doc && !this.sh.saveConflicted()) await this.sh.writeSave(JSON.stringify(doc), { keepalive: true });
   }
 
   // ---------- per-player settings KV ----------
