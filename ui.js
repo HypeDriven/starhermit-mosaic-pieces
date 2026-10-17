@@ -388,7 +388,8 @@ export class UI {
     const el = document.getElementById('gfx-summary');
     if (!el) return;
     const T = gfxStrings(gfxLocale());
-    const text = [info.gpu || T.sum.unknownGpu, describe(info.resolved, info.pixels, T.sum)].join(' · ');
+    const text = [info.gpu || T.sum.unknownGpu, info.level != null ? T.sum.level.replace('{n}', info.level) : null,
+      describe(info.resolved, info.pixels, T.sum)].filter(Boolean).join(' · ');
     if (el.textContent !== text) el.textContent = text;
     const note = document.getElementById('gfx-note');
     const msg = !info.webgl ? T.noWebgl : info.postFailed ? T.postFailed : '';

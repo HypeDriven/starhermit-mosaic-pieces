@@ -337,6 +337,7 @@ async function runPass(browser, label, viewport, hasTouch) {
       if (g.body !== 'high' || g.q.bloom !== 'off' || g.q.shadows !== 'medium' || !g.composer) throw new Error('High + bloom override not applied: ' + JSON.stringify(g));
       if (g.saved.preset !== 'high' || g.saved.bloom !== 'off') throw new Error('graphics not persisted: ' + JSON.stringify(g.saved));
       if (!g.summary.includes('2048² shadows')) throw new Error('summary missing shadow cost: ' + g.summary);
+      if (!/ · Level 0 · /.test(g.summary)) throw new Error('summary lacks the hardware level: ' + g.summary);
       await page.locator('#gfx-section').screenshot({ path: SHOT('graphics', label) });
       await page.click('[data-action="close-screen"]');
       await page.waitForSelector('.screen-card h2');

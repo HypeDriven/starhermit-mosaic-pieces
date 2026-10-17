@@ -25,7 +25,8 @@ finished when all of them are down.
 | `rules.js` | Pure deterministic rules engine: RNG, puzzle generation, legality queries, `applyCommand`, scoring, serialization, replay. DOM-free; shared by client, server and tests. |
 | `content.js` | Versioned content: themes, 3 lessons, 40 journey stages, 3 practice presets, 3 challenges, daily ruleset, offline validators. |
 | `render.js` | Three.js scene: desk, wall, frame and picture light, board slab, cell ghosts, tray strip, extruded piece meshes, picking; applies the graphics settings (shadows, IBL, procedural detail, particles, post-processing chain, adaptive resolution, FPS readout). |
-| `gfx.js` | Pure graphics quality model: presets, per-category tiers, GPU detection (`detectPreset`), `resolve`, `presetTier`, `choosePreset`, `describe`. |
+| `gpu-level.js` | Shared StarHermit hardware-level module (`window.StarHermitGpu`, loaded before `main.js`), copied from the platform tools, never edited here. |
+| `gfx.js` | Pure graphics quality model: presets, per-category tiers, hardware-level detection (`detectLevel`, `presetForLevel`, `detectPreset`), per-preset `BUDGETS`/`budgetFor`, `resolve`, `presetTier`, `choosePreset`, `describe`. |
 | `gfx-i18n.js` | Graphics-panel and StarHermit account strings in all nine required locales, looked up in the game language. |
 | `strings.js`, `i18n.js` | Translation tables (English keys, nine locales) and the runtime (`window.MPI18N`, live switching through `sh-language.js`, static-markup translation, `mp-language` event); classic scripts loaded before `main.js`. |
 | `lang.js` | `T` / `N` / `lang` / `onLanguage` for the ES modules over `MPI18N` (English keys unchanged in Node). |
@@ -330,19 +331,49 @@ vignette, and FXAA/SMAA/MSAA. The selected tile bobs gently and pulses a warm gl
 breathe and the lamp shimmers faintly; all ambient motion stops under reduced motion. Tile faces are
 UV-mapped so the whole face texture — glyph and orientation tick — covers the tile top. The
 Settings card's **Graphics** section (reachable from the title's Settings entry and from pause)
-offers Theme, a quality preset (Auto, chosen from the WebGL unmasked renderer: software renderers
-get Low, discrete GPUs and Apple M-series get High, others Balanced, and touch devices are capped at
-Balanced; Low; Balanced; High; Ultra), a render scale (50–200 %), a per-effect override for shadows
+offers Theme, a quality preset (Auto, chosen from the StarHermit hardware level below; Low;
+Balanced; High; Ultra), a render scale (50–200 %), a per-effect override for shadows
 (off/1024²/2048²/4096²), ambient occlusion (off/on/high), bloom, colour grade, anti-aliasing
 (off/FXAA/SMAA/MSAA), reflections, surface detail (plain/detailed) and particles, each defaulting to
 "From preset (…)", adaptive resolution (averages 90 frames; above 26 ms steps the scale down by 0.1
 to 60 %, below 14 ms back up by 0.05), and a frame-rate readout (bottom-left of the stage, never over
-controls), plus a "GPU · cost · W×H px" summary. Choosing a preset clears overrides. Pixel ratio is
+controls), plus a "GPU · Level N · cost · W×H px" summary ("Level" localized). Choosing a preset clears overrides. Pixel ratio is
 `min(devicePixelRatio, cap) × render scale × adaptive scale`, with caps Low 1, Balanced 1.5,
 High/Ultra 2. Changes apply immediately and persist per device in `mp-graphics-v1`; the body and
 canvas carry `data-gfx-preset`. Low renders without a composer, shadows, IBL or particles, so it
 costs no more than the original single pass; if the post chain cannot be built or throws, the game
 renders directly and the panel says so. The panel's strings are localized (§10).
+
+**Hardware-level detection.** `gpu-level.js` (shared StarHermit copy, `window.StarHermitGpu`) rates the
+WebGL unmasked renderer plus device facts (`detectSystem()`: phone/tablet, cores, memory, screen) on the
+StarHermit hardware level 0–20 (0 = Galaxy S20 / Intel UHD or weaker, every software renderer and no
+WebGL; 20 = RTX 5090; each level ≈ 1.23×; laptop parts two levels below desktop; phones, tablets and
+≤ 4 GB machines capped at 9). `gfx.js` maps it with `presetForLevel(level, { low: 0, balanced: 4, high:
+10, ultra: 17 })`, so Auto picks Ultra on strong GPUs; adaptive resolution still steps down when slow.
+Headless SwiftShader is level 0 → Low. Phones and tablets pace Auto FPS at half the display refresh rate
+("Auto (half refresh rate)") and start at 16 simultaneous sounds (shared `game-options.js`).
+
+**Per-preset budgets** (`BUDGETS` / `budgetFor` in `gfx.js`). Each preset holds 60 FPS on the weakest
+GPU Auto gives it — Low at level 0, Balanced 4, High 10, Ultra 17. Pieces, cells, hit areas and rules
+are identical on every preset; only visuals change. The dust count is tuned at the floor level and
+scales up within the preset on faster GPUs (`StarHermitGpu.scaleBudget`, ≤ 2×, at most 360).
+
+| Budget | Low | Balanced | High | Ultra |
+|---|---|---|---|---|
+| Tile shading | Lambert | Standard | glazed Physical clear coat (Reflections on) | as High |
+| Tile-face texture (glyph + orientation tick) | 128 px | 256 px | 256 px | 512 px |
+| Stone slab texture (Detail on; desk wood 2× wide, tray felt ½) | 256 px | 256 px | 512 px | 1024 px |
+| Dust motes (Particles on) | 40 | 70 | 110 | 180 |
+| Bloom / GTAO resolution | ½ | ½ | ½ | full |
+
+**Benchmark** (`node tools/gfx-bench.mjs mosaic-pieces`; hook `tests/gfx-bench.mjs` picks the preset in
+Settings → Graphics, starts the Relaxed practice round and keeps placing tiles through the tray and cell
+buttons — opening the actions drawer on phones — retrying from the results). Measured 2026-10-17 (GPU ms
+above the draws-skipped floor, projected to the preset's floor level; CPU p90 on the RTX 5090 run):
+
+- Desktop 1920×1080: PASS low (typical 0.00 / slow 2.17 ms GPU, CPU 0.60 ms); PASS balanced (3.56 / 3.75,
+  CPU 0.90); PASS high (1.80 / 1.80, CPU 1.20); PASS ultra (1.35 / 1.53, CPU 1.00).
+- Mobile 390×844 @3×: PASS low (1.28 / 0.00, CPU 0.50); PASS balanced (3.72 / 0.13, CPU 0.80).
 
 **Reduced motion.** `reducedMotion` sets the damping to 1.0 — pieces teleport to their exact end
 state — and shortens the results delay from 700 ms to 100 ms. The CSS media query additionally
@@ -569,8 +600,10 @@ test over many seeds; fuzzing of malformed commands; golden fixed sessions; `val
 46 authored content rows; `validateSubmission` accepting honest claims while rejecting stale
 content versions, wrong boards, bad seeds, score mismatches and hash mismatches; and the cloud-save
 zip/base64 codec (signatures, stored method, round-trip, garbage rejection). It then runs
-`node --test tests/gfx.test.mjs`: GPU-string preset detection (software → Low, discrete/Apple M →
-High, touch cap), `resolve` with presets, overrides, invalid tiers and render-scale clamping,
+`node --test tests/gfx.test.mjs`: hardware level → preset (SwiftShader/llvmpipe/no WebGL, AMD Radeon
+Graphics and Intel UHD → Low, Iris Xe → Balanced, GTX 1070 → High, RTX 4080/5090 → Ultra, phones such
+as Adreno 740 capped at Balanced), the per-preset budget table (explicit, non-decreasing, floor-level
+tuned, scaling with the level), `resolve` with presets, overrides, invalid tiers and render-scale clamping,
 `choosePreset` clearing overrides, the cost summary, and complete Graphics strings in all nine
 locales.
 
@@ -589,7 +622,7 @@ unlocked; the setup card; round start with a visible HUD, a populated mirror and
 full playthrough to results via tray and cell buttons; progression persisted to `localStorage`;
 retry → `Esc` pause → resume; undo restoring the board; hint placing a piece; settings changed,
 applied and persisted, returning to the pause card; the Graphics section switching Low → Ultra →
-High with a bloom override, checked through `data-gfx-preset`, the live composer and the summary; help open and close; leaving to the title and
+High with a bloom override, checked through `data-gfx-preset`, the live composer and the summary (which shows "Level 0"); help open and close; leaving to the title and
 starting Practice; finishing Practice with a score breakdown; graphics settings restored after a reload and
 reflected in the panel, the card not overflowing horizontally, and Auto clearing overrides (Low on
 SwiftShader) with Settings closing back to the title; and layout sanity (bottom tray visible

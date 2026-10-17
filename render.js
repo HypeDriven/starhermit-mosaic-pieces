@@ -16,7 +16,7 @@ import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { PALETTES } from './rules.js';
-import { detectPreset, resolve, SHADOW_MAP } from './gfx.js';
+import { detectLevel, presetForLevel, resolve, SHADOW_MAP, DUST_MAX } from './gfx.js';
 
 export const FRAMING = Object.freeze({ fov: 35, distance: 26, pitch: 0.62, trayGap: 2.2 });
 export const CELL = 1.7;          // world units per board cell
@@ -41,10 +41,13 @@ function rng(seed) {
   let a = seed >>> 0;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-function canvasTex(w, h, draw, { srgb = true, repeat = null } = {}) {
+// `w`×`h` is the size the art is authored at; `scale` (from the preset's texture budget) resizes the canvas.
+function canvasTex(w, h, draw, { srgb = true, repeat = null, scale = 1 } = {}) {
   const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  draw(c.getContext('2d'), w, h);
+  c.width = Math.max(1, Math.round(w * scale)); c.height = Math.max(1, Math.round(h * scale));
+  const ctx = c.getContext('2d');
+  if (scale !== 1) ctx.scale(scale, scale);
+  draw(ctx, w, h);
   const t = new THREE.CanvasTexture(c);
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat[0], repeat[1]); }
@@ -56,8 +59,8 @@ const texCache = new Map();
 const cachedTextures = new Set(); // shared, never disposed with a mesh
 // Tile face: palette colour, glyph and an orientation tick. `detailed` adds a
 // glaze: a soft highlight pool, fine crackle and a darker kiln edge.
-function pieceTexture(color, glyph, detailed) {
-  const key = color + glyph + (detailed ? 'd' : 'p');
+function pieceTexture(color, glyph, detailed, size = 256) {
+  const key = color + glyph + (detailed ? 'd' : 'p') + size;
   if (texCache.has(key)) return texCache.get(key);
   const t = canvasTex(256, 256, (x, W) => {
     x.fillStyle = color;
@@ -97,14 +100,14 @@ function pieceTexture(color, glyph, detailed) {
     // orientation tick at the top edge so rotation is readable by shape too
     x.fillStyle = 'rgba(255,255,255,0.9)';
     x.fillRect(W * 0.43, W * 0.06, W * 0.14, W * 0.06);
-  });
+  }, { scale: size / 256 });
   texCache.set(key, t);
   cachedTextures.add(t);
   return t;
 }
 
 // Procedural surfaces for the `detail` category, built once on first use.
-function woodTexture() {
+function woodTexture(scale = 1) {
   return canvasTex(1024, 512, (x, W, H) => {
     const r = rng(7);
     x.fillStyle = '#5a3f2c';
@@ -130,9 +133,9 @@ function woodTexture() {
       x.fillStyle = 'rgba(15,8,4,0.55)';
       x.fillRect(0, y0, W, 2); // seam
     }
-  }, { repeat: [3, 2] });
+  }, { repeat: [3, 2], scale });
 }
-function stoneTexture() {
+function stoneTexture(scale = 1) {
   return canvasTex(512, 512, (x, W) => {
     const r = rng(11);
     x.fillStyle = '#343a48';
@@ -150,9 +153,9 @@ function stoneTexture() {
       for (let k = 0; k < 8; k++) { px += (r() - 0.5) * 120; py += (r() - 0.3) * 80; x.lineTo(px, py); }
       x.stroke();
     }
-  }, { repeat: [2, 2] });
+  }, { repeat: [2, 2], scale });
 }
-function feltTexture() {
+function feltTexture(scale = 1) {
   return canvasTex(256, 256, (x, W) => {
     const r = rng(23);
     x.fillStyle = '#2a3a34';
@@ -161,7 +164,7 @@ function feltTexture() {
       x.fillStyle = r() < 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.07)';
       x.fillRect(r() * W, r() * W, 1, 1 + r() * 2);
     }
-  }, { repeat: [4, 2] });
+  }, { repeat: [4, 2], scale });
 }
 function softDotTexture() {
   return canvasTex(64, 64, (x, W) => {
@@ -223,6 +226,15 @@ const GradeShader = {
     }`
 };
 
+// Run a post pass at a fraction of the frame: EffectComposer.addPass/setSize hand every pass the full
+// frame size, so the pass's own setSize applies the budget's scale (half-res bloom/GTAO below Ultra).
+function atScale(pass, k) {
+  if (!(k < 1)) return pass;
+  const setSize = pass.setSize.bind(pass);
+  pass.setSize = (w, h) => setSize(Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k)));
+  return pass;
+}
+
 function detectGpu(gl) {
   try {
     const ext = gl.getExtension('WEBGL_debug_renderer_info');
@@ -272,7 +284,14 @@ export class Renderer {
     r.toneMappingExposure = 1.05;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
     this.gpu = detectGpu(r.getContext());
-    this.detected = detectPreset(this.gpu, { mobile: isMobileDevice() });
+    // StarHermit hardware level (gpu-level.js): renderer string + device facts (phone/tablet, cores, memory).
+    let sys = { mobile: isMobileDevice(), webgl2: r.capabilities.isWebGL2 };
+    try {
+      const G = globalThis.StarHermitGpu;
+      if (G) { const d = G.detectSystem(); sys = { ...sys, mobile: sys.mobile || d.mobile, touch: d.touch, screen: d.screen, cores: d.cores, memoryGb: d.memoryGb, astc: d.astc }; }
+    } catch (_) { /* defaults */ }
+    this.gpuLevel = detectLevel(this.gpu, sys);
+    this.detected = presetForLevel(this.gpuLevel);
     this.canvas = r.domElement;
     this.canvas.setAttribute('aria-hidden', 'true');
     this.canvas.style.display = 'block';
@@ -357,7 +376,7 @@ export class Renderer {
   /** Apply saved graphics settings (see gfx.js); takes effect on the next frame. */
   setGraphics(saved) {
     this.saved = saved || {};
-    const g = resolve(this.saved, this.detected);
+    const g = resolve(this.saved, this.detected, this.gpuLevel);
     const prev = this.q;
     this.q = g;
     document.body.dataset.gfxPreset = g.preset;
@@ -374,8 +393,11 @@ export class Renderer {
     }
     this._applyReflections(g.reflections === 'on');
     this._applyDetail(g.detail === 'detailed');
-    if (!prev || prev.reflections !== g.reflections || prev.detail !== g.detail) this._rebuildPieceMaterials();
+    const pb = prev && prev.budget;
+    if (!prev || prev.reflections !== g.reflections || prev.detail !== g.detail || !pb || pb.material !== g.budget.material || pb.tile !== g.budget.tile) this._rebuildPieceMaterials();
     this.dust.visible = g.particles === 'on';
+    this.dustCount = Math.min(DUST_MAX, g.budget.dust);
+    this.dust.geometry.setDrawRange(0, this.dustCount);
     this.sparks.visible = g.particles === 'on';
     this.adaptiveScale = 1;
     this._frames = [];
@@ -389,6 +411,7 @@ export class Renderer {
     return {
       webgl: this.webgl,
       gpu: this.gpu,
+      level: this.gpuLevel,
       detected: this.detected,
       resolved: this.q,
       pixels: [Math.round(size.x * this.pixelRatio), Math.round(size.y * this.pixelRatio)],
@@ -416,8 +439,15 @@ export class Renderer {
   }
 
   _applyDetail(on) {
+    // Procedural surfaces at the preset's texture budget (stone = budget, wood 2× wide, felt half).
+    const k = this.q.budget.texture / 512;
+    if (on && this.detailTex && this.detailTexScale !== k) {
+      for (const t of Object.values(this.detailTex)) t.dispose();
+      this.detailTex = null;
+    }
     if (on && !this.detailTex) {
-      this.detailTex = { wood: woodTexture(), stone: stoneTexture(), felt: feltTexture() };
+      this.detailTexScale = k;
+      this.detailTex = { wood: woodTexture(k), stone: stoneTexture(k), felt: feltTexture(k) };
       for (const t of Object.values(this.detailTex)) t.userData.shared = true; // outlive puzzle teardown
     }
     const d = this.detailTex;
@@ -438,10 +468,13 @@ export class Renderer {
     }
   }
 
+  // Tile shading per the preset's budget: Lambert on Low, Standard on Balanced, glazed Physical on
+  // High/Ultra (with Reflections on); the tile-face texture size follows the budget too.
   _pieceMaterial(color, glyph) {
-    const detailed = this.q.detail === 'detailed';
-    const map = pieceTexture(color, glyph, detailed);
-    if (this.q.reflections === 'on') {
+    const detailed = this.q.detail === 'detailed', b = this.q.budget;
+    const map = pieceTexture(color, glyph, detailed, b.tile);
+    if (b.material === 'lambert') return new THREE.MeshLambertMaterial({ map, emissive: 0x000000 });
+    if (this.q.reflections === 'on' && b.material === 'physical') {
       // glazed ceramic: clear lacquer over a satin body
       return new THREE.MeshPhysicalMaterial({ map, roughness: 0.45, metalness: 0.0, clearcoat: 1.0, clearcoatRoughness: 0.14, envMapIntensity: 1.0, emissive: 0x000000 });
     }
@@ -473,7 +506,8 @@ export class Renderer {
   _buildParticles() {
     const dot = softDotTexture();
     // drifting dust in the lamp light
-    const N = 110, r = rng(5);
+    const N = DUST_MAX, r = rng(5); // built at the largest budget; the preset draws dustCount of them
+    this.dustCount = 110;
     const pos = new Float32Array(N * 3);
     this.dustSeed = new Float32Array(N);
     for (let i = 0; i < N; i++) {
@@ -522,7 +556,7 @@ export class Renderer {
     const moving = !this._reduced();
     if (this.dust.visible && moving) {
       const p = this.dust.geometry.attributes.position.array, t = this._time;
-      for (let i = 0; i < this.dustSeed.length; i++) {
+      for (let i = 0; i < this.dustCount; i++) {
         const s = this.dustSeed[i];
         p[i * 3] += Math.sin(t * 0.3 + s) * 0.004;
         p[i * 3 + 1] += 0.05 * dt;
@@ -874,11 +908,11 @@ export class Renderer {
         ao.blendIntensity = 0.75;
         ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.4, thickness: 1.0, scale: 1.0, samples: g.ao === 'high' ? 16 : 8 });
         ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: g.ao === 'high' ? 6 : 4, rings: 2, samples: g.ao === 'high' ? 16 : 8 });
-        composer.addPass(ao);
+        composer.addPass(atScale(ao, g.budget.aoRes));
       }
       if (g.bloom === 'on') {
         // high threshold: only the lamp strip, target rings and sparkles glow
-        composer.addPass(new UnrealBloomPass(new THREE.Vector2(W, H), 0.5, 0.4, 0.9));
+        composer.addPass(atScale(new UnrealBloomPass(new THREE.Vector2(W, H), 0.5, 0.4, 0.9), g.budget.bloomRes));
       }
       if (g.grade === 'on') composer.addPass(new ShaderPass(GradeShader));
       composer.addPass(new OutputPass());

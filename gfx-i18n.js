@@ -13,7 +13,7 @@ const en = {
   noWebgl: '3D rendering is unavailable, so these settings have no effect.',
   cat: { shadows: 'Shadows', ao: 'Ambient occlusion', bloom: 'Bloom', grade: 'Color grade', antialias: 'Anti-aliasing', reflections: 'Reflections', detail: 'Surface detail', particles: 'Particles' },
   tier: { off: 'Off', on: 'On', low: 'Low', medium: 'Medium', high: 'High', fxaa: 'FXAA', smaa: 'SMAA', msaa: 'MSAA', plain: 'Plain', detailed: 'Detailed' },
-  sum: { noShadows: 'no shadows', shadows: '{n}² shadows', ao: 'ambient occlusion', aoHigh: 'full ambient occlusion', bloom: 'bloom', reflections: 'reflections', noAa: 'no anti-aliasing', unknownGpu: 'unknown GPU' }
+  sum: { noShadows: 'no shadows', shadows: '{n}² shadows', ao: 'ambient occlusion', aoHigh: 'full ambient occlusion', bloom: 'bloom', reflections: 'reflections', noAa: 'no anti-aliasing', unknownGpu: 'unknown GPU', level: 'Level {n}' }
 };
 const enGB = { ...en,
   cat: { ...en.cat, grade: 'Colour grade' }
@@ -27,7 +27,7 @@ const es = {
   noWebgl: 'El renderizado 3D no está disponible, así que estos ajustes no tienen efecto.',
   cat: { shadows: 'Sombras', ao: 'Oclusión ambiental', bloom: 'Resplandor', grade: 'Corrección de color', antialias: 'Suavizado de bordes', reflections: 'Reflejos', detail: 'Detalle de superficies', particles: 'Partículas' },
   tier: { off: 'No', on: 'Sí', low: 'Bajas', medium: 'Medias', high: 'Altas', fxaa: 'FXAA', smaa: 'SMAA', msaa: 'MSAA', plain: 'Simple', detailed: 'Detallado' },
-  sum: { noShadows: 'sin sombras', shadows: 'sombras {n}²', ao: 'oclusión ambiental', aoHigh: 'oclusión ambiental completa', bloom: 'resplandor', reflections: 'reflejos', noAa: 'sin suavizado', unknownGpu: 'GPU desconocida' }
+  sum: { noShadows: 'sin sombras', shadows: 'sombras {n}²', ao: 'oclusión ambiental', aoHigh: 'oclusión ambiental completa', bloom: 'resplandor', reflections: 'reflejos', noAa: 'sin suavizado', unknownGpu: 'GPU desconocida', level: 'Nivel {n}' }
 };
 const es419 = { ...es,
   adaptive: 'Resolución adaptable', showFps: 'Mostrar cuadros por segundo',
@@ -42,7 +42,7 @@ const de = {
   noWebgl: '3D-Darstellung ist nicht verfügbar, daher haben diese Einstellungen keine Wirkung.',
   cat: { shadows: 'Schatten', ao: 'Umgebungsverdeckung', bloom: 'Leuchteffekt', grade: 'Farbkorrektur', antialias: 'Kantenglättung', reflections: 'Spiegelungen', detail: 'Oberflächendetails', particles: 'Partikel' },
   tier: { off: 'Aus', on: 'An', low: 'Niedrig', medium: 'Mittel', high: 'Hoch', fxaa: 'FXAA', smaa: 'SMAA', msaa: 'MSAA', plain: 'Schlicht', detailed: 'Detailliert' },
-  sum: { noShadows: 'keine Schatten', shadows: '{n}²-Schatten', ao: 'Umgebungsverdeckung', aoHigh: 'volle Umgebungsverdeckung', bloom: 'Leuchteffekt', reflections: 'Spiegelungen', noAa: 'keine Kantenglättung', unknownGpu: 'unbekannte GPU' }
+  sum: { noShadows: 'keine Schatten', shadows: '{n}²-Schatten', ao: 'Umgebungsverdeckung', aoHigh: 'volle Umgebungsverdeckung', bloom: 'Leuchteffekt', reflections: 'Spiegelungen', noAa: 'keine Kantenglättung', unknownGpu: 'unbekannte GPU', level: 'Stufe {n}' }
 };
 const fr = {
   graphics: 'Graphismes', quality: 'Qualité', auto: 'Automatique (détectée : {tier})',
@@ -53,7 +53,7 @@ const fr = {
   noWebgl: 'Le rendu 3D n’est pas disponible ; ces réglages sont sans effet.',
   cat: { shadows: 'Ombres', ao: 'Occlusion ambiante', bloom: 'Halo lumineux', grade: 'Étalonnage des couleurs', antialias: 'Anticrénelage', reflections: 'Reflets', detail: 'Détail des surfaces', particles: 'Particules' },
   tier: { off: 'Désactivé', on: 'Activé', low: 'Basses', medium: 'Moyennes', high: 'Hautes', fxaa: 'FXAA', smaa: 'SMAA', msaa: 'MSAA', plain: 'Simple', detailed: 'Détaillé' },
-  sum: { noShadows: 'sans ombres', shadows: 'ombres {n}²', ao: 'occlusion ambiante', aoHigh: 'occlusion ambiante complète', bloom: 'halo', reflections: 'reflets', noAa: 'sans anticrénelage', unknownGpu: 'GPU inconnu' }
+  sum: { noShadows: 'sans ombres', shadows: 'ombres {n}²', ao: 'occlusion ambiante', aoHigh: 'occlusion ambiante complète', bloom: 'halo', reflections: 'reflets', noAa: 'sans anticrénelage', unknownGpu: 'GPU inconnu', level: 'Niveau {n}' }
 };
 const frCA = { ...fr,
   showFps: 'Afficher le nombre d’images par seconde',
@@ -69,7 +69,7 @@ const pt = {
   noWebgl: 'A renderização 3D não está disponível, então estas opções não têm efeito.',
   cat: { shadows: 'Sombras', ao: 'Oclusão ambiente', bloom: 'Brilho', grade: 'Correção de cor', antialias: 'Suavização de bordas', reflections: 'Reflexos', detail: 'Detalhe das superfícies', particles: 'Partículas' },
   tier: { off: 'Desligado', on: 'Ligado', low: 'Baixas', medium: 'Médias', high: 'Altas', fxaa: 'FXAA', smaa: 'SMAA', msaa: 'MSAA', plain: 'Simples', detailed: 'Detalhado' },
-  sum: { noShadows: 'sem sombras', shadows: 'sombras {n}²', ao: 'oclusão ambiente', aoHigh: 'oclusão ambiente completa', bloom: 'brilho', reflections: 'reflexos', noAa: 'sem suavização', unknownGpu: 'GPU desconhecida' }
+  sum: { noShadows: 'sem sombras', shadows: 'sombras {n}²', ao: 'oclusão ambiente', aoHigh: 'oclusão ambiente completa', bloom: 'brilho', reflections: 'reflexos', noAa: 'sem suavização', unknownGpu: 'GPU desconhecida', level: 'Nível {n}' }
 };
 const it = {
   graphics: 'Grafica', quality: 'Qualità', auto: 'Automatica (rilevata: {tier})',
@@ -80,7 +80,7 @@ const it = {
   noWebgl: 'Il rendering 3D non è disponibile, quindi queste impostazioni non hanno effetto.',
   cat: { shadows: 'Ombre', ao: 'Occlusione ambientale', bloom: 'Bagliore', grade: 'Correzione colore', antialias: 'Antialiasing', reflections: 'Riflessi', detail: 'Dettaglio superfici', particles: 'Particelle' },
   tier: { off: 'No', on: 'Sì', low: 'Basse', medium: 'Medie', high: 'Alte', fxaa: 'FXAA', smaa: 'SMAA', msaa: 'MSAA', plain: 'Semplice', detailed: 'Dettagliato' },
-  sum: { noShadows: 'senza ombre', shadows: 'ombre {n}²', ao: 'occlusione ambientale', aoHigh: 'occlusione ambientale completa', bloom: 'bagliore', reflections: 'riflessi', noAa: 'senza antialiasing', unknownGpu: 'GPU sconosciuta' }
+  sum: { noShadows: 'senza ombre', shadows: 'ombre {n}²', ao: 'occlusione ambientale', aoHigh: 'occlusione ambientale completa', bloom: 'bagliore', reflections: 'riflessi', noAa: 'senza antialiasing', unknownGpu: 'GPU sconosciuta', level: 'Livello {n}' }
 };
 
 export const GFX_STRINGS = {
