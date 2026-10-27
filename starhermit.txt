@@ -1,14 +1,37 @@
 name=Mosaic Pieces
 description=Place and rotate scattered ceramic tiles to restore a complete mosaic on a gallery worktable.
-launch=index.html
 owner=2712e04e-461b-4d23-81ae-e40b429128a8
 server=score-script.js
 cover=cover.jpg
+
+# StarHermit engine script game: one package, played natively by the
+# StarHermit client and in browsers by the engine's web runtime. Browsers open
+# launch=index.html, the loader `npm run package` writes (it pins the engine
+# on wiki.starhermit.com by hash; never edit it). Re-run `npm run package`
+# after every change and commit index.html + starhermit-files.json.
+launch=index.html
+engine.api=1
+engine.entry=native/main.ts
+engine.version=1.19.1
+engine.minor=20
+engine.capabilities=platform,storage,clipboard
+
+# Keyboard controls (players rebind keys and pads in the runtime's Options).
+# With no button focused the arrows move the board cursor and Enter places the
+# selected piece on it; Tab reaches the tray and board-cell buttons, whose
+# arrows then move between them and Enter selects or places. Pieces and cells
+# are also played with the pointer or touch: tap a piece, then a glowing cell,
+# or drag a piece onto its cell; tap the selected piece again to rotate it.
 control.rotate=KeyR | Rotate selected piece
 control.hint=KeyH | Hint
 control.undo=KeyU | Undo
 control.pause=Escape | Pause / resume
 control.camera=KeyC | Reset camera
+control.place=Enter+NumpadEnter | Place on the board cursor
+control.left=ArrowLeft | Board cursor left
+control.right=ArrowRight | Board cursor right
+control.up=ArrowUp | Board cursor up
+control.down=ArrowDown | Board cursor down
 control.pick1=Digit1+Numpad1 | Pick 1st tray piece
 control.pick2=Digit2+Numpad2 | Pick 2nd tray piece
 control.pick3=Digit3+Numpad3 | Pick 3rd tray piece
@@ -18,7 +41,22 @@ control.pick6=Digit6+Numpad6 | Pick 6th tray piece
 control.pick7=Digit7+Numpad7 | Pick 7th tray piece
 control.pick8=Digit8+Numpad8 | Pick 8th tray piece
 control.pick9=Digit9+Numpad9 | Pick 9th tray piece
-control.navLeft=ArrowLeft | Previous item in list
-control.navRight=ArrowRight | Next item in list
-control.navUp=ArrowUp | Row up in list
-control.navDown=ArrowDown | Row down in list
+engine.group.rotate=Pieces
+engine.group.left=Board cursor
+engine.group.pick1=Tray
+engine.group.pause=Round
+
+# Gamepad defaults (the browser build's mapping): the D-pad or left stick
+# moves the board cursor, South picks the next tray piece (or places the
+# selected one on the cursor), East rotates, West hints, North undoes, the
+# right stick press resets the camera, Start pauses.
+engine.gamepad.left=DpadLeft+LeftStickLeft
+engine.gamepad.right=DpadRight+LeftStickRight
+engine.gamepad.up=DpadUp+LeftStickUp
+engine.gamepad.down=DpadDown+LeftStickDown
+engine.gamepad.place=South
+engine.gamepad.rotate=East
+engine.gamepad.hint=West
+engine.gamepad.undo=North
+engine.gamepad.camera=RightStickPress
+engine.gamepad.pause=Start

@@ -19,9 +19,7 @@
     ['Close panel', 'Cerrar panel', 'Leiste schließen', 'Fermer le panneau', 'Fechar painel', 'Chiudi pannello'],
     ['Objective', 'Objetivo', 'Ziel', 'Objectif', 'Objetivo', 'Obiettivo'],
     ['Assemble the mosaic.', 'Arma el mosaico.', 'Setze das Mosaik zusammen.', 'Assemblez la mosaïque.', 'Monte o mosaico.', 'Componi il mosaico.'],
-    ['Progress', 'Progreso', 'Fortschritt', 'Progression', 'Progresso', 'Progressi'],
     ['Playfield', 'Campo de juego', 'Spielfeld', 'Aire de jeu', 'Área de jogo', 'Area di gioco'],
-    ['3D rendering is unavailable in this browser. The accessible board below is fully playable; your progress is preserved.', 'El renderizado 3D no está disponible en este navegador. El tablero accesible de abajo se puede jugar por completo; tu progreso se conserva.', '3D-Darstellung ist in diesem Browser nicht verfügbar. Das barrierefreie Brett unten ist voll spielbar; dein Fortschritt bleibt erhalten.', 'Le rendu 3D n’est pas disponible dans ce navigateur. Le plateau accessible ci-dessous reste entièrement jouable ; votre progression est conservée.', 'A renderização 3D não está disponível neste navegador. O tabuleiro acessível abaixo é totalmente jogável; seu progresso é mantido.', 'Il rendering 3D non è disponibile in questo browser. Il tabellone accessibile qui sotto è pienamente giocabile; i progressi sono conservati.'],
     ['Game status', 'Estado del juego', 'Spielstatus', 'État de la partie', 'Status do jogo', 'Stato della partita'],
     ['Goal image', 'Imagen objetivo', 'Zielbild', 'Image à reproduire', 'Imagem objetivo', 'Immagine obiettivo'],
     ['Actions, pieces and board', 'Acciones, piezas y tablero', 'Aktionen, Teile und Brett', 'Actions, pièces et plateau', 'Ações, peças e tabuleiro', 'Azioni, pezzi e tabellone'],
@@ -222,18 +220,9 @@
     ['Close', 'Cerrar', 'Schließen', 'Fermer', 'Fechar', 'Chiudi'],
 
     // ---- settings
-    ['Music', 'Música', 'Musik', 'Musique', 'Música', 'Musica'],
-    ['Effects', 'Efectos', 'Effekte', 'Effets', 'Efeitos', 'Effetti'],
-    ['Ambience', 'Ambiente', 'Umgebung', 'Ambiance', 'Ambiente', 'Ambiente'],
-    ['Voice', 'Voz', 'Stimme', 'Voix', 'Voz', 'Voce'],
-    ['Mute all', 'Silenciar todo', 'Alles stumm', 'Tout couper', 'Silenciar tudo', 'Silenzia tutto'],
     ['Theme', 'Tema', 'Design', 'Thème', 'Tema', 'Tema'],
     ['Accessibility', 'Accesibilidad', 'Barrierefreiheit', 'Accessibilité', 'Acessibilidade', 'Accessibilità'],
-    ['Reduced motion', 'Movimiento reducido', 'Weniger Bewegung', 'Animations réduites', 'Movimento reduzido', 'Movimento ridotto'],
-    ['High contrast', 'Alto contraste', 'Hoher Kontrast', 'Contraste élevé', 'Alto contraste', 'Contrasto elevato'],
-    ['Larger text', 'Texto más grande', 'Größerer Text', 'Texte plus grand', 'Texto maior', 'Testo più grande'],
     ['Color-vision-safe palette', 'Paleta apta para daltonismo', 'Farbsichere Palette', 'Palette adaptée au daltonisme', 'Paleta segura para daltonismo', 'Tavolozza adatta al daltonismo'],
-    ['Hold-to-drag (off = toggle select)', 'Mantener para arrastrar (desactivado = alternar selección)', 'Halten zum Ziehen (aus = Auswahl umschalten)', 'Maintenir pour glisser (désactivé = sélection par bascule)', 'Segurar para arrastar (desligado = alternar seleção)', 'Tieni premuto per trascinare (spento = selezione a scatto)'],
     ['Left-handed layout', 'Diseño para zurdos', 'Linkshänder-Layout', 'Disposition pour gauchers', 'Layout para canhotos', 'Disposizione per mancini'],
     ['Timing assistance (double time limits)', 'Ayuda de tiempo (doble límite de tiempo)', 'Zeithilfe (doppelte Zeitlimits)', 'Aide au temps (limites doublées)', 'Ajuda de tempo (limites dobrados)', 'Aiuto sui tempi (limiti raddoppiati)'],
     ['Replay tutorial', 'Repetir el tutorial', 'Anleitung wiederholen', 'Revoir le tutoriel', 'Repetir o tutorial', 'Ripeti il tutorial'],
@@ -247,7 +236,6 @@
     ['Total gallery time: {time}', 'Tiempo total en la galería: {time}', 'Gesamtzeit in der Galerie: {time}', 'Temps total dans la galerie : {time}', 'Tempo total na galeria: {time}', 'Tempo totale in galleria: {time}'],
     ['Guest', 'Invitado', 'Gast', 'Invité', 'Convidado', 'Ospite'],
     ['Player', 'Jugador', 'Spieler', 'Joueur', 'Jogador', 'Giocatore'],
-    ['Player {id}', 'Jugador {id}', 'Spieler {id}', 'Joueur {id}', 'Jogador {id}', 'Giocatore {id}'],
     ['Loading…', 'Cargando…', 'Wird geladen …', 'Chargement…', 'Carregando…', 'Caricamento…'],
     ['Platform board', 'Clasificación de la plataforma', 'Plattform-Liste', 'Classement de la plateforme', 'Ranking da plataforma', 'Classifica della piattaforma'],
     ['No entries yet — be the first.', 'Aún no hay entradas: sé el primero.', 'Noch keine Einträge – sei der Erste.', 'Pas encore d’entrées — soyez le premier.', 'Ainda sem entradas — seja o primeiro.', 'Ancora nessuna voce: sii il primo.'],
@@ -265,7 +253,15 @@
     ['While you were away your round was paused. You had placed {n}/{total} pieces in {time}.', 'Mientras no estabas, tu ronda quedó en pausa. Habías colocado {n}/{total} piezas en {time}.', 'Während du weg warst, war deine Runde pausiert. Du hattest {n}/{total} Teile in {time} gesetzt.', 'Pendant votre absence, votre manche était en pause. Vous aviez posé {n}/{total} pièces en {time}.', 'Enquanto você estava fora, sua rodada ficou pausada. Você tinha colocado {n}/{total} peças em {time}.', 'Mentre eri via il round era in pausa. Avevi posato {n}/{total} pezzi in {time}.'],
     ['Resume round', 'Reanudar ronda', 'Runde fortsetzen', 'Reprendre la manche', 'Retomar rodada', 'Riprendi il round'],
     ['Start fresh', 'Empezar de nuevo', 'Neu beginnen', 'Recommencer', 'Começar do zero', 'Ricomincia da capo'],
-    ['Resume session', 'Reanudar sesión', 'Sitzung fortsetzen', 'Reprendre la session', 'Retomar sessão', 'Riprendi la sessione']
+    ['Resume session', 'Reanudar sesión', 'Sitzung fortsetzen', 'Reprendre la session', 'Retomar sessão', 'Riprendi la sessione'],
+    // ---- engine port: the runtime's Options, the board cursor
+    ['Volumes and mute are in the StarHermit Options.', 'El volumen y el silencio están en las Opciones de StarHermit.', 'Lautstärke und Stummschaltung findest du in den StarHermit-Optionen.', 'Le volume et la sourdine se trouvent dans les Options StarHermit.', 'Volume e mudo ficam nas Opções do StarHermit.', 'Volume e silenzioso si trovano nelle Opzioni di StarHermit.'],
+    ['Audio & graphics', 'Audio y gráficos', 'Audio & Grafik', 'Audio et graphismes', 'Áudio e gráficos', 'Audio e grafica'],
+    ['Audio, graphics & language', 'Audio, gráficos e idioma', 'Audio, Grafik & Sprache', 'Audio, graphismes et langue', 'Áudio, gráficos e idioma', 'Audio, grafica e lingua'],
+    ['Keyboard bindings', 'Asignación de teclas', 'Tastenbelegung', 'Affectation des touches', 'Atalhos de teclado', 'Assegnazione tasti'],
+    ['Sound, graphics, language, reduced motion, high contrast and larger text are in the StarHermit Options.', 'El sonido, los gráficos, el idioma, el movimiento reducido, el alto contraste y el texto más grande están en las Opciones de StarHermit.', 'Ton, Grafik, Sprache, reduzierte Bewegung, hoher Kontrast und größerer Text findest du in den StarHermit-Optionen.', 'Le son, les graphismes, la langue, les animations réduites, le contraste élevé et le texte agrandi se trouvent dans les Options StarHermit.', 'Som, gráficos, idioma, movimento reduzido, alto contraste e texto maior ficam nas Opções do StarHermit.', 'Suono, grafica, lingua, movimento ridotto, contrasto elevato e testo più grande si trovano nelle Opzioni di StarHermit.'],
+    ['Cursor on column {x} row {y}.', 'Cursor en la columna {x}, fila {y}.', 'Cursor auf Spalte {x}, Zeile {y}.', 'Curseur sur la colonne {x}, rangée {y}.', 'Cursor na coluna {x}, linha {y}.', 'Cursore sulla colonna {x}, riga {y}.'],
+    ['With nothing focused, the arrows move a cursor over the board and {place} places the selected piece there (or picks the next tray piece).', 'Sin nada enfocado, las flechas mueven un cursor por el tablero y {place} coloca allí la pieza seleccionada (o toma la siguiente pieza de la bandeja).', 'Ist nichts fokussiert, bewegen die Pfeiltasten einen Cursor über das Brett, und {place} setzt das gewählte Teil dorthin (oder nimmt das nächste Teil aus der Ablage).', 'Quand rien n’a le focus, les flèches déplacent un curseur sur le plateau et {place} y pose la pièce sélectionnée (ou prend la pièce suivante en attente).', 'Sem nada em foco, as setas movem um cursor pelo tabuleiro e {place} coloca ali a peça selecionada (ou pega a próxima peça da bandeja).', 'Senza nulla a fuoco, le frecce spostano un cursore sul tabellone e {place} vi posa il pezzo selezionato (o prende il prossimo pezzo dal vassoio).'],
   ];
 
   var COLS = ['es-419', 'de-DE', 'fr-FR', 'pt-BR', 'it-IT'];
@@ -296,4 +292,4 @@
   };
 
   root.MP_STRINGS = T;
-})(typeof self !== 'undefined' ? self : this);
+})(globalThis);

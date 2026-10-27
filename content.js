@@ -4,7 +4,8 @@
 // challenges, daily ruleset, and offline content validators.
 
 import { dailySeed, utcDateStr, normalizeRuleset, genPuzzle, CONTENT_VERSION } from './rules.js';
-import { N } from './lang.js';
+/** Marks an English key that is translated where it is shown (native/i18n.ts T()). */
+const N = (key) => key;
 
 export { CONTENT_VERSION };
 

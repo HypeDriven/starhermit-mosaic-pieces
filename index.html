@@ -1,94 +1,18 @@
-<!DOCTYPE html>
+<!doctype html>
+<!-- StarHermit web loader, written by starhermit package --web: it pins the engine by hash and holds no script of its own; package again rather than edit it. -->
 <html lang="en">
 <head>
-  <link rel="icon" href="favicon.png" type="image/png">
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="dark" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="favicon.png">
 <title>Mosaic Pieces</title>
-<link rel="stylesheet" href="./style.css" />
-<script src="game-options.js" data-game="mosaic-pieces"></script>
-<script type="importmap">
-{ "imports": { "three": "./three.min.js", "three/addons/": "./vendor/three/addons/" } }
-</script>
-<script src="ui-scale.js"></script>
-<script src="browser-guard.js"></script>
-<script src="starhermit-sdk.js"></script>
-<script src="sh-language.js"></script>
-<script src="strings.js"></script>
-<script src="i18n.js"></script>
-<script src="gpu-level.js"></script>
+<style>html,body{margin:0;height:100%;background:#000;color:#eee;font:16px/1.5 system-ui,sans-serif}canvas{display:block;width:100%;height:100%}.starhermit-message{position:fixed;inset:0;margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;background:#000}.starhermit-message[hidden]{display:none}.starhermit-late{animation:starhermit-late 0s 20s both}@keyframes starhermit-late{from{visibility:hidden}to{visibility:visible}}</style>
+<script type="module" src="https://wiki.starhermit.com/engine/1.19.1/starhermit.js" integrity="sha384-9TOdzhxCkVPMPhnFc/0FpNWOkM2E7PKsucfQjpN+MUwIqEcmC7uoKb/LFuEvz0yr" crossorigin="anonymous"></script>
+<script type="application/json" id="starhermit-config">{"manifest":{"integrity":"sha384-PkSph+S8KH+6UXDRVsT0RFVg6OcRljDWJIPZVryGWwkoRmKgiwd47GcNflWSisTy","url":"https://wiki.starhermit.com/engine/1.19.1/manifest.json"}}</script>
 </head>
-<body data-theme="default">
-<div id="app">
-
-  <header class="topbar" role="banner">
-    <h1 class="title" data-i18n-skip>Mosaic Pieces</h1>
-    <div class="top-right">
-      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-left-rail" aria-label="Toggle objective panel" aria-expanded="false">☰</button>
-      <button type="button" class="btn btn-ghost drawer-toggle" data-action="toggle-right-rail" aria-label="Toggle actions panel" aria-expanded="false">✚</button>
-      <span id="sync-status" class="sync-status" title="Save sync status"></span>
-      <span id="clock" class="clock" title="Platform time"></span>
-      <button type="button" class="btn btn-ghost" data-action="nav-help" aria-label="Help and rules">?</button>
-      <button type="button" class="btn btn-ghost" data-action="nav-settings" aria-label="Settings">⚙</button>
-    </div>
-  </header>
-
-  <main class="layout" role="main">
-    <div id="drawer-scrim" hidden></div>
-    <aside id="objective-rail" class="rail rail-left" aria-label="Objective and progression">
-      <button type="button" class="btn btn-ghost rail-close" data-action="close-rails" aria-label="Close panel">✕</button>
-      <h2 class="rail-h">Objective</h2>
-      <p id="objective-text">Assemble the mosaic.</p>
-      <div id="progress-block" class="progress-block" aria-label="Progress"></div>
-      <div id="journey-block"></div>
-    </aside>
-
-    <section id="game-region" class="stage" aria-label="Playfield">
-      <div id="canvas-host"></div>
-      <div id="webgl-fallback" class="webgl-fallback" hidden>
-        <p>3D rendering is unavailable in this browser. The accessible board below is fully playable; your progress is preserved.</p>
-      </div>
-      <div id="hud" class="hud" role="region" aria-label="Game status" hidden>
-        <span id="hud-mode"></span>
-        <span id="hud-placed"></span>
-        <span id="hud-time"></span>
-        <span id="hud-score"></span>
-        <span id="hud-limit" class="hud-limit"></span>
-      </div>
-      <!-- always-visible goal thumbnail (the wall picture may be out of frame) -->
-      <canvas id="goal-thumb" class="goal-thumb" width="128" height="88" aria-label="Goal image" role="img" hidden></canvas>
-    </section>
-
-    <aside id="actions-rail" class="rail rail-right" aria-label="Actions, pieces and board">
-      <button type="button" class="btn btn-ghost rail-close" data-action="close-rails" aria-label="Close panel">✕</button>
-      <h2 class="rail-h">Actions</h2>
-      <div class="action-grid">
-        <button type="button" class="btn" data-action="rotate" id="btn-rotate">Rotate <kbd>R</kbd></button>
-        <button type="button" class="btn" data-action="hint" id="btn-hint">Hint <kbd>H</kbd></button>
-        <button type="button" class="btn" data-action="undo" id="btn-undo">Undo <kbd>U</kbd></button>
-        <button type="button" class="btn" data-action="pause" id="btn-pause">Pause <kbd>Esc</kbd></button>
-      </div>
-      <h2 class="rail-h">Tray pieces</h2>
-      <ul id="piece-list" class="piece-list" aria-label="Pieces in tray"></ul>
-      <h2 class="rail-h">Board cells</h2>
-      <div id="cell-grid" class="cell-grid" role="group" aria-label="Board cells"></div>
-    </aside>
-  </main>
-
-  <nav class="bottom-tray" aria-label="Quick actions">
-    <button type="button" class="btn" data-action="rotate">Rotate</button>
-    <button type="button" class="btn" data-action="hint">Hint</button>
-    <button type="button" class="btn" data-action="undo">Undo</button>
-    <button type="button" class="btn" data-action="pause">Pause</button>
-  </nav>
-
-  <div id="overlay-root"></div>
-
-  <div id="live-region" class="visually-hidden" aria-live="polite" role="status"></div>
-  <div id="alert-region" class="visually-hidden" aria-live="assertive" role="alert"></div>
-</div>
-<noscript><p style="padding:2rem">Mosaic Pieces requires JavaScript to run.</p></noscript>
-<script type="module" src="./main.js"></script>
+<body>
+<canvas></canvas>
+<div id="starhermit-status" class="starhermit-message" role="status"><span>Loading Mosaic Pieces…</span><span class="starhermit-late">If the game has not started, this browser cannot run it or its engine (StarHermit 1.19.1) could not be loaded: reload the page, or open it in a current Chrome, Edge, Firefox or Safari.</span></div>
+<noscript><p class="starhermit-message">This game needs JavaScript.</p></noscript>
 </body>
 </html>
