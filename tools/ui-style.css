@@ -1,0 +1,111 @@
+/* Mosaic Pieces — the browser build's style.css rewritten class-based for the
+   engine's UI (`npm run css` converts it into assets/ui-style.json).
+   Element selectors, ids, attribute selectors and @media do not convert:
+   every widget names its classes, and the breakpoints (desktop ≥ 1024 px with
+   rails at the sides, drawers below that, portrait phone ≤ 700 px with the
+   bottom tray, landscape phone ≤ 500 px tall with a narrow right rail) are
+   layouts picked in native/screens.ts. The [data-theme] palettes and
+   body.high-contrast are token sets native/style.ts swaps; larger text and
+   reduced motion are the runtime's options. */
+
+:root {
+  --bg: #2b2f3a;
+  --panel: #343947;
+  --line: #5a6172;
+  --text: #eceef2;
+  --muted: #aab0bd;
+  --accent: #cfa9ff;
+  --btn: #8a4fd0;
+  --btn-hover: #9a5fe6;
+  --stage: #1d2028;
+}
+
+* { box-sizing: border-box; }
+
+/* ------------------------------------------------------------- text */
+.title-text { color: var(--text); font-size: 21px; font-weight: 600; }
+.h2 { color: var(--text); font-size: 24px; font-weight: 700; }
+.h3 { color: var(--text); font-size: 18px; font-weight: 700; }
+.p { color: var(--text); font-size: 16px; }
+.rail-p { color: var(--text); font-size: 15px; }
+.rail-h { color: var(--muted); font-size: 13px; font-weight: 700; }
+.muted { color: var(--muted); font-size: 14px; }
+.sync { color: var(--muted); font-size: 13px; }
+.sync-saving { color: var(--accent); font-size: 13px; }
+.sync-offline { color: #e0a050; font-size: 13px; }
+.clock { color: var(--muted); font-size: 14px; }
+.hud-text { color: var(--text); font-size: 14px; }
+.hud-warn { color: #ffb35c; font-size: 14px; font-weight: 600; }
+.small { color: #ffffffb0; font-size: 13px; font-weight: 400; }
+.btn-text { color: #ffffff; font-size: 15px; font-weight: 400; }
+.kbd { background: #00000066; border-radius: 4px; padding: 0 5px; color: #ffffff; font-size: 11px; }
+.score-k { color: var(--text); font-size: 16px; font-weight: 700; }
+.score-v { color: var(--text); font-size: 16px; }
+.lb-text { color: var(--text); font-size: 16px; }
+.lb-me { color: var(--accent); font-size: 16px; font-weight: 600; }
+.ach-text { color: #ffffff; font-size: 15px; }
+.piece-glyph { color: #ffffff; font-size: 18px; }
+.cell-text { color: var(--muted); font-size: 12px; }
+.cell-filled-text { color: #ffffff; font-size: 12px; }
+.cell-cand-text { color: #7dff9a; font-size: 12px; }
+
+/* ------------------------------------------------------------- surfaces */
+.page { background: var(--bg); border-radius: 0; }
+.stage { background: var(--stage); border-radius: 0; }
+/* key art behind every overlay, under a scrim that keeps card text at AA */
+.screen-bg {
+  background: linear-gradient(#14161cb0, #14161cdd), url(../assets/title-backdrop.webp) center / cover no-repeat, #14161cd9;
+  border-radius: 0;
+}
+.screen-plain { background: #000000; border-radius: 0; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 13px; padding: 22px 26px; box-shadow: 0 12px 40px #000000aa; }
+.topbar { background: var(--panel); border-bottom: 2px solid var(--line); border-radius: 0; padding: 8px 12px; }
+.rail { background: var(--panel); border-radius: 0; padding: 12px 14px; }
+.drawer { background: var(--panel); border-radius: 0; padding: 12px 14px; box-shadow: 0 0 40px #000000cc; }
+.scrim { background: #00000059; border-radius: 0; }
+.bottom-tray { background: var(--panel); border-top: 2px solid var(--line); border-radius: 0; padding: 8px; }
+.hud { background: #1c1f26cc; border-radius: 8px; padding: 6px 13px; }
+.goal { background: #11131a; border: 2px solid var(--line); border-radius: 6px; }
+.score-row { border-bottom: 1px solid var(--line); border-radius: 0; padding: 4px 8px; }
+.lb-row { border-bottom: 1px solid var(--line); border-radius: 0; padding: 5px 3px; }
+.toast { background: var(--panel); border: 2px solid var(--accent); border-radius: 10px; padding: 10px 18px; }
+.rule { background: var(--line); border-radius: 0; }
+
+/* ------------------------------------------------------------- buttons */
+.btn {
+  min-height: 44px; min-width: 44px; padding: 7px 14px; border-radius: 6px;
+  background: var(--btn); color: #ffffff; font-size: 15px; text-align: center;
+}
+.btn:hover { background: var(--btn-hover); }
+.btn:disabled { opacity: 0.45; }
+.btn-ghost {
+  min-height: 44px; min-width: 44px; padding: 7px 14px; border-radius: 6px;
+  background: transparent; border: 2px solid var(--line); color: var(--text); font-size: 15px; text-align: center;
+}
+.btn-ghost:hover { background: #ffffff14; }
+.btn-ghost:disabled { opacity: 0.45; }
+.btn-primary {
+  min-height: 44px; padding: 11px 26px; border-radius: 6px;
+  background: var(--btn); color: #ffffff; font-size: 18px; text-align: center;
+}
+.btn-primary:hover { background: var(--btn-hover); }
+.menu-btn {
+  min-height: 44px; padding: 7px 14px; border-radius: 6px;
+  background: var(--btn); color: #ffffff; font-size: 15px; text-align: left;
+}
+.menu-btn:hover { background: var(--btn-hover); }
+.menu-btn:disabled { opacity: 0.45; }
+.menu-primary {
+  min-height: 44px; padding: 11px 26px; border-radius: 6px;
+  background: var(--btn); color: #ffffff; font-size: 18px; text-align: left;
+}
+.menu-primary:hover { background: var(--btn-hover); }
+.piece { min-width: 44px; min-height: 44px; border: 2px solid var(--line); border-radius: 6px; padding: 0; text-align: center; }
+.piece.active { border: 3px solid var(--accent); }
+.piece:disabled { opacity: 0.35; }
+.cell { min-width: 30px; min-height: 44px; border: 2px solid var(--line); border-radius: 5px; background: var(--panel); padding: 0; text-align: center; }
+.cell:hover { background: #ffffff14; }
+.cell-filled { min-width: 30px; min-height: 44px; border: 2px solid var(--line); border-radius: 5px; background: var(--btn); padding: 0; text-align: center; }
+.cell-cand { min-width: 30px; min-height: 44px; border: 2px solid #7dff9a; border-radius: 5px; background: var(--panel); padding: 0; text-align: center; }
+.cell-cand:hover { background: #ffffff14; }
+.cell-cursor { min-width: 30px; min-height: 44px; border: 3px solid #ffd166; border-radius: 5px; background: var(--panel); padding: 0; text-align: center; }

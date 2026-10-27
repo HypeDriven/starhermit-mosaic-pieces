@@ -1,0 +1,98 @@
+# Desktop: every screen from the title and back — mode select, learn, journey, practice, challenge, profile, leaderboards, settings (theme and an accessibility option), help; then a Practice round, its pause sheet, help from it, Leave round.
+# viewport 1280x720@1
+until 300 =Play
+frames 150
+save menu-title
+click =Play
+until 60 Choose a mode
+frames 10
+save menu-modes
+click =Practice
+until 60 Relaxed play
+frames 10
+save menu-practice
+click =Back
+until 60 Choose a mode
+frames 10
+click =Challenge
+until 60 Perfect Fit
+frames 10
+save menu-challenge
+click =Back
+until 60 Choose a mode
+frames 10
+click =Back
+until 60 =Play
+frames 10
+click Profile & achievements
+until 60 Total gallery time
+frames 10
+expect First Mosaic
+save menu-profile
+click =Back
+until 60 =Play
+frames 10
+click =Leaderboards
+until 60 Personal bests
+frames 10
+save menu-leaderboards
+click =Back
+until 60 =Play
+frames 10
+click Settings
+until 60 Accessibility
+frames 10
+click =Gallery
+frames 10
+click =Forest
+frames 10
+click Left-handed layout
+frames 10
+save menu-settings
+click =Done
+until 60 =Play
+frames 10
+click =Play
+until 60 Choose a mode
+frames 10
+click =Practice
+until 60 Relaxed play
+frames 10
+click Standard (4x4, rotation)
+until 60 Expected duration
+frames 10
+click =Start
+until 120 Tray pieces
+frames 120
+save menu-play-forest-lefty
+key KeyH 1
+frames 10
+key KeyH 1
+frames 30
+expect 1/16 placed
+click Help and rules
+until 60 How to play
+frames 10
+save menu-help
+click =Close
+until 60 Tray pieces
+frames 10
+key Escape 1
+until 60 =Paused
+frames 10
+save menu-pause
+click Settings & accessibility
+until 60 Accessibility
+frames 10
+click =Forest
+frames 10
+click =Gallery
+frames 10
+click Left-handed layout
+frames 10
+click =Done
+until 60 =Paused
+frames 10
+click =Leave round
+until 60 =Play
+frames 10
