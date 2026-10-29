@@ -11,12 +11,12 @@
 // and the authored camera framing board, tray and goal picture on both axes.
 // Rendering reads rules state and never writes it.
 //
-// From three.js: light intensities are r170's ÷ π (the engine's convention);
+// From three.js r170 (engine.minor 28): light intensities, shadow bias and box as render.js set them;
 // RoomEnvironment(renderer) + PMREM give the reflections at the old
 // environmentIntensity 0.35; the composer chain (GTAO, UnrealBloom threshold
 // 0.9, the GradeShader before tone mapping, FXAA / SMAA / MSAA) is
-// renderer.ao / bloom / grade / antialias; the fitted orthographic shadow box
-// is the engine's `shadow.distance`; the procedural wood, stone and felt are
+// renderer.ao / bloom / grade / antialias; the orthographic shadow box is
+// render.js's, fitted to the board and tray; the procedural wood, stone and felt are
 // baked (tools/bake-textures.mjs) while the tile faces still paint on a canvas.
 // The playfield sits between the top bar, the rails and the bottom tray as the
 // old <canvas> did: the camera keeps the playfield's aspect and is offset into
@@ -26,7 +26,7 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, Color, CylinderGeometry,
   DirectionalLight, ExtrudeGeometry, HemisphereLight, Mesh, MeshBasicMaterial, MeshLambertMaterial, MeshPhysicalMaterial,
-  MeshStandardMaterial, PerspectiveCamera, PlaneGeometry, PMREMGenerator, Points, PointsMaterial, Raycaster, RepeatWrapping,
+  MeshStandardMaterial, OrthographicCamera, PerspectiveCamera, PlaneGeometry, PMREMGenerator, Points, PointsMaterial, Raycaster, RepeatWrapping,
   RingGeometry, RoomEnvironment, Shape, ShapeGeometry, SpotLight, SRGBColorSpace, TextureLoader, Vector2, Vector3, renderer, scene,
   type Material, type Texture,
 } from "starhermit:scene";
@@ -165,13 +165,13 @@ function paintGoal(state: State, palette: string[]): void {
 export let goalReady = false;
 
 // -- lights: one dominant key + soft fill + the picture light ------------------------------------------
-const keyLight = new DirectionalLight(0xfff2e0, 2.4 / PI);
+const keyLight = new DirectionalLight(0xfff2e0, 2.4);
 keyLight.position.set(6, 10, 8);
 keyLight.shadow.mapSize = 1024;
 keyLight.shadow.bias = -0.0004;
-keyLight.shadow.normalBias = 1;
+keyLight.shadow.normalBias = 0.02;
 scene.add(keyLight, keyLight.target);
-const hemi = new HemisphereLight(0x8899bb, 0x33241c, 0.85 / PI);
+const hemi = new HemisphereLight(0x8899bb, 0x33241c, 0.85);
 scene.add(hemi);
 
 // -- the room ----------------------------------------------------------------------------------------
@@ -209,7 +209,7 @@ scene.add(lampArm);
 const bulb = new Mesh(new BoxGeometry(10.4, 0.12, 0.2), new MeshBasicMaterial({ color: new Color(1.0, 0.86, 0.62).multiplyScalar(2.6) }));
 bulb.position.set(0, 19.35, -14.75);
 scene.add(bulb);
-const PIC_INTENSITY = 90 / PI;
+const PIC_INTENSITY = 90;
 const picLight = new SpotLight(0xffe2b8, PIC_INTENSITY, 30, 0.62, 0.6, 1.6);
 picLight.position.set(0, 19.2, -13.6);
 picLight.target.position.set(0, 11, -15.4);
@@ -464,6 +464,9 @@ function frameCamera(state: State): void {
   const dir = new Vector3(6, 10, 8).normalize();
   keyLight.target.position.set(0, 0, cz);
   keyLight.position.set(0, 0, cz).addScaledVector(dir, 30);
+  const sc = keyLight.shadow.camera as OrthographicCamera;
+  sc.left = -radius; sc.right = radius; sc.top = radius; sc.bottom = -radius; sc.near = 30 - radius - 2; sc.far = 30 + radius + 2;
+  sc.updateProjectionMatrix();
   const pts: Vector3[] = [];
   for (const x of [-halfW, halfW]) { pts.push(new Vector3(x, 0, zTop)); pts.push(new Vector3(x, 0.6, zBottom)); }
   const lookAt = new Vector3(0, 1.5, cz);
@@ -483,7 +486,6 @@ function frameCamera(state: State): void {
   }
   camera.position.copy(lookAt).addScaledVector(vdir, d);
   camera.lookAt(lookAt);
-  keyLight.shadow.distance = d + radius * 2 + 10;
   // the tray layout may have changed with the aspect: re-place the tray pieces
   for (const p of state.pieces) {
     if (p.placed) continue;
@@ -612,7 +614,7 @@ function applyReflections(on: boolean): void {
   }
   scene.environment = on ? envMap : null;
   scene.environmentIntensity = 0.35;
-  hemi.intensity = (on ? 0.55 : 0.85) / PI; // IBL takes over part of the fill
+  hemi.intensity = on ? 0.55 : 0.85; // IBL takes over part of the fill
   // gilt frame reads as metal only when there is something to reflect
   frameMat.metalness = on ? 0.85 : 0.4;
   frameMat.roughness = on ? 0.32 : 0.5;
@@ -739,7 +741,7 @@ export function update(dtIn: number): void {
   if (!reducedMotion) {
     for (const m of markerMeshes) (m.material as MeshBasicMaterial).opacity = 0.72 + 0.18 * Math.sin(time * 3);
     if (cursorMesh.visible) (cursorMesh.material as MeshBasicMaterial).opacity = 0.75 + 0.2 * Math.sin(time * 4);
-    picLight.intensity = PIC_INTENSITY + Math.sin(time * 0.7) * 3 / PI; // faint lamp shimmer
+    picLight.intensity = PIC_INTENSITY + Math.sin(time * 0.7) * 3; // faint lamp shimmer
   }
   updateParticles(dt);
 }
