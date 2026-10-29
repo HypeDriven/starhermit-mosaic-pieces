@@ -16,7 +16,7 @@
     "cover.jpg": {"sha256": "62b3660e85b988eb033aae20f4867a91db9ebeb3651f1aa798d31190f483127f", "size": 319589},
     "favicon.png": {"sha256": "64d94397fdbe66fa858744de69b387bb3cc85b02962e6326c8bbd0bb12873d80", "size": 135826},
     "icon.png": {"sha256": "85ce556c89916e73c658e11fc8d1f142e3e8ffaf4c4350b973a62412fb169c3a", "size": 7782},
-    "index.html": {"sha256": "1c56077927222af92108ffc527bbc51bc42fa8bbfdcc40513b7116aff5a69c7c", "size": 1765},
+    "index.html": {"sha256": "1ee911c600ea9ce43da3d23ddccc89d3e11cfbdb022bb612087142e678ddc4c9", "size": 1765},
     "native/account.ts": {"sha256": "657784c57ecacff9665688c211dd6233ce11813ddb4306d6f47714d88a9343dd", "size": 5913},
     "native/audio.ts": {"sha256": "dc966eb597c41e78b78a0e5ab3c565ea6288e2f8d2874d70ddb45a6c96f43c3f", "size": 4689},
     "native/game.ts": {"sha256": "eb17dc751e5e5e65571613119a0eef178ae2ab7c3de8f8782de7921d97b09011", "size": 4134},
@@ -45,7 +45,7 @@
     "sfx/timer-tick.opus": {"sha256": "72e5e305c5c44ebcb48d2bfdc1cda839d46dbaa084725a9a646e200f170cf88e", "size": 12096},
     "sfx/ui-click.opus": {"sha256": "e5ac9f286ed6cc566f61326fbc2453c120ae27a9691738bc464e6760848805b1", "size": 10972},
     "sfx/undo-move.opus": {"sha256": "7cfb09b4ee7a51b9375ab9d3558ce083774922a6a5495181e2c298645fa58a18", "size": 11688},
-    "starhermit.txt": {"sha256": "896b30e83ddc833402b6baeb2b574e62d373ec0226f0fd275bdef6465a037842", "size": 2762},
+    "starhermit.txt": {"sha256": "b0ca70623bffa9f728f22d8b585b3346452820941189c8e3fd37836e5a15879b", "size": 2762},
     "strings.js": {"sha256": "1182b32f5a8f01c078b0eb66d8263f78a693a63bd629f6e97f7cc199d6037740", "size": 52173}
   },
   "excluded": ["LICENSE.md", "coverart.png", "data/", "favicon.svg", "node_modules/", "package-lock.json", "package.json", "server.js", "sfx/manifest.json", "sfx/manifest.md", "sfx/manifest.txt", "spec.md", "tests/", "tools/", "tsconfig.json"],
