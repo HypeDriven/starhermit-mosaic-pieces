@@ -671,8 +671,8 @@ export function applyLook(next: Look): void {
     denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: next.ao === "high" ? 6 : 4, rings: 2, samples: next.ao === "high" ? 16 : 8 },
   };
   // high threshold: only the lamp strip, target rings and sparkles glow
-  // r170 page: minor 29 bloom follows r185 UnrealBloomPass, so the page's 0.5 is squared (0.25) to keep its look.
-  renderer.bloom = next.bloom ? { strength: 0.25, radius: 0.4, threshold: 0.9, resolution: b.bloomRes } : null;
+  // render.js: three r170 UnrealBloomPass(0.5, 0.4, 0.9), drawn by the r176 bloom model at the page's strength.
+  renderer.bloom = next.bloom ? { model: "r176", strength: 0.5, radius: 0.4, threshold: 0.9, resolution: b.bloomRes } : null;
   // render.js GradeShader (linear HDR before tone mapping): a gentle S-curve, a touch more saturation, warm
   // highlights / cool shadows, the 0.24 vignette.
   renderer.grade = next.grade ? {
