@@ -609,7 +609,7 @@ export function endDrag(): void { dragging = null; }
 let envMap: Texture | null = null;
 function applyReflections(on: boolean): void {
   if (on && !envMap) {
-    try { envMap = new PMREMGenerator(renderer).fromScene(new RoomEnvironment(renderer), 0.04).texture; }
+    try { envMap = new PMREMGenerator(renderer).fromScene((() => { const room = new RoomEnvironment(renderer); room.position.y = 0 /* pre-r183 page: room at origin (minor 32 default is -3.5) */; return room; })(), 0.04).texture; }
     catch (e) { console.warn(`environment: ${e instanceof Error ? e.message : String(e)}`); }
   }
   scene.environment = on ? envMap : null;
