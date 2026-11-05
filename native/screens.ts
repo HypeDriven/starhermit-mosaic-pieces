@@ -71,15 +71,10 @@ function button(b: Btn, width: number | null = null): boolean {
   return hit;
 }
 /** Buttons at their own widths in rows that wrap at `width` (style.css .row: flex-wrap, gap .5rem). */
-function flow(label: string, list: Btn[], width: number, gap = 8, align: ui.Align = "start"): void {
-  const widths = list.map((b) => Math.min(width, tw(b.text, b.cls ?? "btn", "button") + 4));
-  const rows = wrapRows(widths, width, gap);
-  let k = 0;
-  ui.column(label, () => {
-    rows.forEach((n, ri) => ui.row(`${label}-r${ri}`, () => {
-      for (let i = 0; i < n; i++, k++) button(list[k]!, widths[k]! >= width ? width : null);
-    }, { spacing: gap, align: "center" }));
-  }, { spacing: gap, align, width });
+function flow(label: string, list: Btn[], width: number, gap = 8, justify: ui.Align = "start"): void {
+  ui.row(label, () => {
+    for (const b of list) button(b, tw(b.text, b.cls ?? "btn", "button") + 4 >= width ? width : null);
+  }, { wrap: true, width, gap, justify, align: "center" });
 }
 function wrapRows(widths: number[], max: number, gap: number): number[] {
   const rows: number[] = [];
@@ -103,13 +98,6 @@ function para(text: string, width: number, cls = "p", id?: string): void {
 function heading(cls: string, text: string, width: number): void {
   if (tw(text, cls, "heading") <= width) ui.style(cls).heading(text);
   else ui.style(cls).paragraph(text, width);
-}
-/** Shortens `text` with an ellipsis until it fits `width` (style.css text-overflow: ellipsis). */
-function ellipsize(text: string, cls: string, width: number): string {
-  if (tw(text, cls) <= width) return text;
-  let s = text;
-  while (s.length > 1 && tw(s + "…", cls) > width) s = s.slice(0, -1);
-  return s.trimEnd() + "…";
 }
 /** ui.js rulesetLabel: board size plus its twist. */
 export function rulesetLabel(rs: Partial<Ruleset>): string {
@@ -511,7 +499,7 @@ function topbar(L: Layout, h: number): void {
   const titleW = Math.max(40, L.lw - 24 - rightW - 12);
   const titleCls = L.landscape || L.portrait ? "p" : "title-text";
   ui.place("topbar", { anchor: "top-start", x: 0, y: 0 }, () => ui.id("topbar-row").row("Mosaic Pieces", () => {
-    ui.style(titleCls, { text: { weight: "600" } }).label(ellipsize("Mosaic Pieces", titleCls, titleW));
+    ui.style(titleCls, { width: titleW, text: { weight: "600", overflow: "ellipsis" } }).label("Mosaic Pieces");
     ui.spacer();
     ui.row("top-right", () => {
       for (const b of items) chromeButton(b);
@@ -652,7 +640,7 @@ function hud(L: Layout, pf: { x: number; y: number; w: number; h: number }): voi
   let k = 0;
   ui.place("hud", { anchor: "top-start", x: pf.x + 12, y: pf.y + 8 }, () => ui.id("hud-box").column(T("Game status"), () => {
     rows.forEach((n, ri) => ui.row(`hud-r${ri}`, () => {
-      for (let i = 0; i < n; i++, k++) { const [id, t, c] = items[k]!; ui.style(c).id(id).label(ellipsize(t, c, maxW)); }
+      for (let i = 0; i < n; i++, k++) { const [id, t, c] = items[k]!; ui.style(c, widths[k]! >= maxW ? { width: maxW, text: { overflow: "ellipsis" } } : {}).id(id).label(t); }
     }, { spacing: gap, align: "center" }));
   }, { style: "hud", spacing: 2 }));
   if (round?.mode === "lesson") hudLesson(L, pf);

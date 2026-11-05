@@ -1,0 +1,22 @@
+# Bench scene: Journey stage 1, pieces dragged and placed through the real UI.
+# viewport 1280x720@1
+until 300 =Play
+frames 150
+click Journey
+until 60 marks mastery stages
+frames 10
+click Stage 1
+until 60 Expected duration
+frames 10
+click =Start
+until 120 Tray pieces
+frames 120
+measure start
+frames 120
+drag 435 585 668 403 12
+frames 120
+click 557 585
+frames 10
+click 571 403
+frames 320
+measure stop

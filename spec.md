@@ -25,7 +25,7 @@ finished when all of them are down.
 | `native/main.ts` | Entry module: the screen state, the round (the one validated command path), the round clock on fixed steps, lessons, progression, achievements, personal bests, posting to the leaderboard, the saved round, and input (actions, the board cursor, pointer and touch on the desk). |
 | `native/screens.ts` | Every screen and the round's shell (top bar, rails, HUD, goal thumbnail, bottom tray, drawers, toasts) in `starhermit:ui`. |
 | `native/render.ts` | The 3D gallery desk on `starhermit:scene`: desk, wall, frame and picture light, board slab, ghost cells, tray, extruded tiles, rings, cursor, particles, picking and dragging, the camera framing, the look per graphics level. |
-| `native/quality.ts` | The old graphics presets and budgets keyed by the runtime's quality tier and level. |
+| `native/quality.ts` | The engine-owned effects from `levelSettings()`; the old art presets and budgets keyed by the level's tier. |
 | `native/style.ts` | Registers `assets/ui-style.json` and the theme / high-contrast tokens. |
 | `native/audio.ts` | One-shot samples per event and the rendered ambience drone on the runtime's buses. |
 | `native/platform.ts` | Saves (with foreign-save migration and conflict merge), the device's saved round, the game's options, the player, invite link, clock, leaderboard read and score posting. |
@@ -338,20 +338,21 @@ whole face texture — glyph and orientation tick — covers the tile top.
 
 **Graphics levels.** The runtime's Options (F1 › Graphics) choose the level (Auto from the device, or a
 level the player picks), render scale, adaptive resolution, the frame-rate limit and readout. The
-game maps the level's quality tier to the old presets (`native/quality.ts`):
+shadows and their map size, AO, bloom, the grade and anti-aliasing are the level's own (`levelSettings()`, the
+engine's table every StarHermit game reads; the table shows each tier's anchor level, and levels above an anchor
+raise them); the art follows the level's tier and the old presets (`native/quality.ts`):
 
 | Budget | Low | Balanced | High | Ultra |
 |---|---|---|---|---|
 | Shadows | off | 1024² | 2048² | 4096² |
-| Ambient occlusion | off | off | on | high |
+| Ambient occlusion | off | off | on, ½ res | full res |
 | Bloom / grade | off | on | on | on |
-| Anti-aliasing | MSAA | FXAA | SMAA | MSAA |
+| Anti-aliasing | off | FXAA | SMAA | MSAA |
 | Reflections, detail, particles | off | on | on | on |
 | Tile shading | Lambert | Standard | glazed Physical clear coat | as High |
 | Tile-face texture | 128 px | 256 px | 256 px | 512 px |
 | Baked slab texture (desk wood 2× wide, felt ½) | — | 256 px | 512 px | 1024 px |
 | Dust motes (×≤2 with the level inside the tier) | 0 | 70 | 110 | 180 |
-| Bloom / GTAO resolution | ½ | ½ | ½ | full |
 
 On Low the ghost cells take 3 % white instead of 10 %: three.js blended them in display space when Low
 rendered without its composer, the engine always blends in linear light. The old per-effect overrides are

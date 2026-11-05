@@ -12,8 +12,8 @@
 // in it), in slices over several frames: a live synthesis graph makes clip
 // loads fail on the engine's web runtime. The synthesized blips the browser
 // build played while a sample decoded are not ported, so a sample still
-// loading is silent. Clips load once the mixer runs (natively at once, in a
-// browser after the first press), one at a time. A hidden window holds the
+// loading is silent. Every clip loads at once in onStart; the drone waits for
+// the mixer (natively at once, in a browser after the first press). A hidden window holds the
 // ambience (audio.js suspended its context on visibilitychange).
 import { context, createClip, loadClip, play as playClip, type AudioClip, type Bus, type Sound } from "starhermit:audio";
 
@@ -27,20 +27,14 @@ const SFX: Record<string, string> = {
 const INTERFACE = new Set(["ui", "back"]);
 
 const clips = new Map<string, AudioClip>();
-const queue: string[] = [];
-let loading = false;
-let wantClips = false;
 let suspended = false;
 
-function load(name: string): void { if (!queue.includes(name) && !clips.has(name)) queue.push(name); }
-function pump(): void {
-  if (loading || !queue.length) return;
-  const name = queue.shift()!;
-  loading = true;
-  loadClip(`sfx/${name}.opus`).then((c) => { clips.set(name, c); loading = false; }, (e: unknown) => { console.warn(`sfx ${name}: ${String(e)}`); loading = false; });
+/** Loads every clip at once (onStart); a cue whose clip is still loading is skipped. */
+export function loadSfx(): void {
+  for (const name of new Set(Object.values(SFX))) {
+    loadClip(`sfx/${name}.opus`).then((c) => { clips.set(name, c); }, (e: unknown) => console.warn(`sfx ${name}: ${String(e)}`));
+  }
 }
-/** Asks for the clips; they load once the mixer runs (see update). */
-export function loadSfx(): void { wantClips = true; }
 /** A hidden window holds the ambience. */
 export function setSuspended(on: boolean): void { suspended = on; }
 
@@ -52,7 +46,7 @@ export function playEvent(name: string): void {
   if (!clip) return;
   const bus: Bus = INTERFACE.has(name) ? "interface" : "effects";
   try { playClip(clip, { bus, gain: LEVEL.effects }); }
-  catch { clips.delete(file); load(file); } // a clip the mixer lost: load it again
+  catch { /* the mixer is full this frame: skip it */ }
 }
 
 // -- the ambience: three sines rendered into one ten-second loop --------------------------------------
@@ -80,17 +74,9 @@ function renderSlice(): void {
   if (rendered >= LOOP) { droneClip = createClip([drone], RATE); drone = null; }
 }
 
-/** Each frame: the samples once the mixer runs (one at a time), then the drone rendered a slice a frame, then
- * the ambience on or off. */
+/** Each frame, once the mixer runs: the drone rendered a slice a frame, then the ambience on or off. */
 export function update(): void {
   if (context.state !== "running") return;
-  if (wantClips) {
-    wantClips = false;
-    for (const name of Object.values(SFX)) load(name);
-    return;
-  }
-  pump();
-  if (loading || queue.length) return;
   if (!droneClip) { if (ambienceOn) renderSlice(); return; }
   try {
     const on = ambienceOn && !suspended;

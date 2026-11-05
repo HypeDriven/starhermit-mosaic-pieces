@@ -358,7 +358,7 @@ function pieceMaterial(color: string, glyph: string): Material {
 /** The ghost cells' 10 % white. three.js blended it in linear light behind the composer (Balanced and up) but in
  * display space when Low rendered straight to the canvas; the engine always blends in linear light, so Low takes
  * the opacity that gives the old display-space tint over the slab. */
-function ghostOpacity(): number { return look && !look.bloom && !look.grade && look.ao === "off" ? 0.03 : 0.10; }
+function ghostOpacity(): number { return look && look.bloom === null && !look.grade && !look.ao ? 0.03 : 0.10; }
 function rebuildPieceMaterials(): void {
   for (const v of pieces.values()) {
     (v.mesh.material as Material).dispose();
@@ -666,13 +666,14 @@ export function applyLook(next: Look): void {
   const prev = look;
   look = next;
   const b = next.budget;
-  renderer.ao = next.ao === "off" ? null : {
-    blendIntensity: 0.75, radius: 0.6, distanceExponent: 1.4, thickness: 1.0, scale: 1.0, samples: next.ao === "high" ? 16 : 8, resolution: b.aoRes,
-    denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: next.ao === "high" ? 6 : 4, rings: 2, samples: next.ao === "high" ? 16 : 8 },
+  const ao = next.ao, fullAo = !!ao && ao.resolution >= 1; // the engine's AoQuality: below 1 = "on", from 1 = "high"
+  renderer.ao = ao && {
+    blendIntensity: 0.75, radius: 0.6, distanceExponent: 1.4, thickness: 1.0, scale: 1.0, samples: ao.samples, resolution: ao.resolution,
+    denoise: { lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: fullAo ? 6 : 4, rings: 2, samples: ao.denoiseSamples },
   };
   // high threshold: only the lamp strip, target rings and sparkles glow
   // render.js: three r170 UnrealBloomPass(0.5, 0.4, 0.9), drawn by the r176 bloom model at the page's strength.
-  renderer.bloom = next.bloom ? { model: "r176", strength: 0.5, radius: 0.4, threshold: 0.9, resolution: b.bloomRes } : null;
+  renderer.bloom = next.bloom === null ? null : { model: "r176", strength: 0.5, radius: 0.4, threshold: 0.9, resolution: next.bloom };
   // render.js GradeShader (linear HDR before tone mapping): a gentle S-curve, a touch more saturation, warm
   // highlights / cool shadows, the 0.24 vignette.
   renderer.grade = next.grade ? {
@@ -683,7 +684,7 @@ export function applyLook(next: Look): void {
   const on = next.shadows > 0;
   renderer.shadowMap.enabled = on;
   keyLight.castShadow = on;
-  if (on) keyLight.shadow.mapSize = next.shadows;
+  if (on) keyLight.shadow.mapSize = next.shadows; // the level's size (minor ≥ 23: the engine keeps what the game sets)
   applyReflections(next.reflections);
   applyDetail();
   const pb = prev?.budget;
