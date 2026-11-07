@@ -18,7 +18,7 @@ import { requestRebind } from "starhermit:input";
 import * as draw from "starhermit:draw";
 import * as ui from "starhermit:ui";
 import { Content, Rules, type Ruleset } from "./game.ts";
-import { account, N, plain, T } from "./i18n.ts";
+import { N, plain, T } from "./i18n.ts";
 import * as platform from "./platform.ts";
 import * as render from "./render.ts";
 import { GLYPHS } from "./render.ts";
@@ -32,13 +32,12 @@ import {
 // ------------------------------------------------------------------ layout and helpers
 interface Layout { lw: number; lh: number; sc: number; ox: number; oy: number; desktop: boolean; portrait: boolean; landscape: boolean; narrow: boolean }
 function layoutNow(): Layout {
-  const f = frame();
-  const sc = ui.preferences().scale;
-  const sa = f.safeArea;
-  const lw = Math.max(1, (f.width - sa.left - sa.right) / sc), lh = Math.max(1, (f.height - sa.top - sa.bottom) / sc);
+  const v = ui.viewport!();
+  const sc = v.scale;
+  const lw = Math.max(1, v.width), lh = Math.max(1, v.height);
   const landscape = lh <= 500 && lw > lh;
   const portrait = !landscape && lw <= 700 && lh >= lw;
-  return { lw, lh, sc, ox: sa.left, oy: sa.top, desktop: lw >= 1024 && !landscape, portrait, landscape, narrow: lw <= 420 };
+  return { lw, lh, sc, ox: v.x * sc, oy: v.y * sc, desktop: lw >= 1024 && !landscape, portrait, landscape, narrow: lw <= 420 };
 }
 const lastSize = new Map<string, number>();
 function tw(text: string, style: string | (string | ui.Style)[], kind?: "button" | "heading"): number {
@@ -185,8 +184,8 @@ function titleScreen(w: number): void {
     button({ id: "btn-profile", text: T("Profile & achievements"), sub: T("{n}/{total} achievements unlocked.", { n: p.achievements.length, total: ACHIEVEMENTS.length }), cls: "menu-btn", act: () => openScreen("profile", "btn-back") }, w);
     button({ id: "btn-leaderboard", text: T("Leaderboards"), cls: "menu-btn", act: openLeaderboard }, w);
     button({ id: "btn-settings", text: T("Settings"), sub: T("Audio, graphics and accessibility."), cls: "menu-btn", act: () => openScreen("settings", "btn-done") }, w);
-    if (!platform.signedIn()) button({ id: "btn-sign-in", text: account().signIn, sub: account().signInSub, cls: "menu-btn", act: signIn }, w);
-    if (platform.inviteLink()) button({ id: "btn-invite", text: account().invite, sub: account().inviteSub, cls: "menu-btn", act: copyInvite }, w);
+    if (!platform.signedIn()) button({ id: "btn-sign-in", text: T("starhermit.signIn"), sub: T("acct.signInSub"), cls: "menu-btn", act: signIn }, w);
+    if (platform.inviteLink()) button({ id: "btn-invite", text: T("starhermit.invite"), sub: T("acct.inviteSub"), cls: "menu-btn", act: copyInvite }, w);
   }, { spacing: 8, width: w });
 }
 function backRow(w: number, to: () => void, id = "btn-back", text = T("Back")): void {
@@ -368,7 +367,7 @@ function settingsScreen(w: number): void {
   ui.row("theme-row", () => {
     para(T("Theme"), w - sw - 12, "p");
     ui.spacer();
-    const pick = ui.style({ width: sw }).id("set-theme").select(T("Theme"), idx, Content.THEMES.map((t) => T(t.label)));
+    const pick = ui.id("set-theme").select(T("Theme"), idx, Content.THEMES.map((t) => T(t.label)));
     if (pick !== idx) platform.setOption("theme", THEME_IDS[pick]!);
   }, { width: w, align: "center" });
   heading("h3", T("Accessibility"), w);

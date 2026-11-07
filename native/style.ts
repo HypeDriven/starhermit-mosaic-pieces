@@ -43,7 +43,7 @@ export function initStyles(): void {
       text: { color: "$text" }, minHeight: 44,
       parts: { box: { background: "$bg", border: { width: 2, color: "$line" }, radius: 4 }, mark: { background: "$accent" } },
     },
-    select: { background: "$bg", border: { width: 2, color: "$line" }, radius: 6, text: { color: "$text" }, minHeight: 40 },
+    select: { background: "$bg", border: { width: 2, color: "$line" }, radius: 6, text: { color: "$text" } },
     scrollArea: { parts: { bar: { background: "#aab0bd66", radius: 4 } } },
     tooltip: { background: "$panel", text: { color: "$text" }, radius: 6, padding: 6 },
   });

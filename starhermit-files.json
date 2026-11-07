@@ -1,6 +1,7 @@
 {
   "files": {
     "assets/gallery-wall.webp": {"sha256": "d7fca85d090d486f0ef94597c7740a2388e392b3f4ad8c1ae8ee8a1904f3402f", "size": 20532},
+    "assets/strings.json": {"sha256": "93afca18662519c84562283eced5186830ca2ab54cb461d97df6189cbf71943c", "size": 90202},
     "assets/textures/felt-1024.png": {"sha256": "34139be3f39bf742dc289b5dc476b5763a3c0e51dae1683cbd0c21de3f6ebd68", "size": 135931},
     "assets/textures/felt-256.png": {"sha256": "3d1f59cb97d4e859766bbc4e427d6cb1fb86a8f235c1e02140c5e27f27cc5862", "size": 22237},
     "assets/textures/felt-512.png": {"sha256": "396305090e71d900479240892f37dbb7f0c0ee8d56aa236f5ed2251a2c7ba928", "size": 63091},
@@ -17,16 +18,15 @@
     "favicon.png": {"sha256": "64d94397fdbe66fa858744de69b387bb3cc85b02962e6326c8bbd0bb12873d80", "size": 135826},
     "icon.png": {"sha256": "85ce556c89916e73c658e11fc8d1f142e3e8ffaf4c4350b973a62412fb169c3a", "size": 7782},
     "index.html": {"sha256": "f3c84639eb64bdf88825c802642bef0d681b9e5472812a4398847343d132d66e", "size": 1943},
-    "native/account.ts": {"sha256": "657784c57ecacff9665688c211dd6233ce11813ddb4306d6f47714d88a9343dd", "size": 5913},
-    "native/audio.ts": {"sha256": "9ab9a7b84d68be5dbc0eba2aebec4e139e12c5059ff7d4012fb48878462dfdf0", "size": 4213},
+    "native/audio.ts": {"sha256": "82bdc41a5332697f845c90a1bd73519b08e308310ad9e16d87255587b447a3c8", "size": 4189},
     "native/game.ts": {"sha256": "eb17dc751e5e5e65571613119a0eef178ae2ab7c3de8f8782de7921d97b09011", "size": 4134},
-    "native/i18n.ts": {"sha256": "29598863798bfa7eb897bb56a4539333296006b9d308594ffbd2390aaeaa4d94", "size": 3279},
-    "native/main.ts": {"sha256": "2cfa08191597c0909368feed4774c98eeec4c72d3dac8346069ed916fc78e7e7", "size": 32632},
-    "native/platform.ts": {"sha256": "b4dde7fdd50deab12da601a4fc834e5237f37ef55a8ac4df203b4dfa8b8814fe", "size": 11605},
+    "native/i18n.ts": {"sha256": "a479d19b072ffb9816187cc4be6078a1f0b8be44b12981c26012ac1a9f503fb2", "size": 1518},
+    "native/main.ts": {"sha256": "28b5e2d3d00a2cfd372085a81a3d791d4467adde97ab8f7169409edc2820a534", "size": 32696},
+    "native/platform.ts": {"sha256": "2c3660a4a3ab74d78b0f4bc646cac2a6a87d0cd8cfdec3fe9965ed6a34850c6a", "size": 10250},
     "native/quality.ts": {"sha256": "d719665d77004eb3f9b76c8b2369a03ed4143b8ed4d6c5d35cd49ef61b5ad9bf", "size": 3931},
     "native/render.ts": {"sha256": "6d77fc2c8ef09d5497a56993dfbe75a1c043cf32afcd4e90194ee71b0766cb17", "size": 36264},
-    "native/screens.ts": {"sha256": "53f2775d03a96dc6c529436331d93287d2e61f6f59681d080c5dc670e7c77359", "size": 42131},
-    "native/style.ts": {"sha256": "be59b7d6a4ae4defdf24cdc515ccb407342725cb952506cd8b253e0e0d226df7", "size": 3608},
+    "native/screens.ts": {"sha256": "108c428f66a880d2d9a45318cea7adf5b450d78766182b1bd44fbae4ec8e2c00", "size": 42027},
+    "native/style.ts": {"sha256": "863c3d8ae3b36ef1abb9c8a0e41c8699197d6490beb57deedef4a021feb77444", "size": 3593},
     "progress.js": {"sha256": "af3bba3d6b14bfe3dc8989bd02ce65d871b8fcf0d68d71a2d78a4d23259587c0", "size": 5233},
     "rules.js": {"sha256": "c0cd4a89dd77ad8029ce9a42eb97c82a179955d80e6e9110268384e930c8f1ff", "size": 15455},
     "score-script.js": {"sha256": "2dbfcf68f98b1c687e6c9539fc400ce5cb22a6bf598881342b55383d22db8948", "size": 2486},
@@ -45,8 +45,7 @@
     "sfx/timer-tick.opus": {"sha256": "72e5e305c5c44ebcb48d2bfdc1cda839d46dbaa084725a9a646e200f170cf88e", "size": 12096},
     "sfx/ui-click.opus": {"sha256": "e5ac9f286ed6cc566f61326fbc2453c120ae27a9691738bc464e6760848805b1", "size": 10972},
     "sfx/undo-move.opus": {"sha256": "7cfb09b4ee7a51b9375ab9d3558ce083774922a6a5495181e2c298645fa58a18", "size": 11688},
-    "starhermit.txt": {"sha256": "b6ae88285c5e4e3d3d8cb68fada73c7f8865c4458fc63a00a8d1b1a02c97ceb6", "size": 2762},
-    "strings.js": {"sha256": "1182b32f5a8f01c078b0eb66d8263f78a693a63bd629f6e97f7cc199d6037740", "size": 52173}
+    "starhermit.txt": {"sha256": "b6ae88285c5e4e3d3d8cb68fada73c7f8865c4458fc63a00a8d1b1a02c97ceb6", "size": 2762}
   },
   "excluded": ["LICENSE.md", "coverart.png", "data/", "favicon.svg", "node_modules/", "package-lock.json", "package.json", "server.js", "sfx/manifest.json", "sfx/manifest.md", "sfx/manifest.txt", "spec.md", "tests/", "tools/", "tsconfig.json"],
   "format": 1

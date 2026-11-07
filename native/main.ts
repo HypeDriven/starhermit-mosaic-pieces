@@ -23,7 +23,7 @@ import * as ui from "starhermit:ui";
 import { onSessionEnded, requestSignIn } from "starhermit:platform";
 import * as audio from "./audio.ts";
 import { Content, Rules, type Challenge, type Command, type Daily, type Lesson, type PracticePreset, type Ruleset, type Stage, type State } from "./game.ts";
-import { account, N, T } from "./i18n.ts";
+import { N, T } from "./i18n.ts";
 import * as platform from "./platform.ts";
 import { lookFor } from "./quality.ts";
 import * as render from "./render.ts";
@@ -315,10 +315,10 @@ function postToLeaderboard(total: number): void {
   if (!platform.signedIn() || !round || !["journey", "daily", "challenge"].includes(round.mode)) return;
   const token = {};
   lbToken = token;
-  app.lbText = () => account().lbPosting;
+  app.lbText = () => T("starhermit.leaderboardPosting");
   void platform.postLeaderboard(total).then((r) => {
     if (token !== lbToken) return;
-    app.lbText = () => (!r.posted ? account().lbFailed : r.rank ? account().lbRank.replace("{rank}", String(r.rank)) : account().lbPosted);
+    app.lbText = () => (!r.posted ? T("starhermit.leaderboardNotPosted") : r.rank ? T("starhermit.leaderboardRank", { rank: r.rank }) : T("starhermit.leaderboardPosted"));
   });
 }
 let lbToken: object | null = null;
@@ -504,7 +504,7 @@ export function copyInvite(): void {
   if (!link) return;
   let ok = false;
   try { clipboard.writeText(link); ok = true; } catch { ok = false; }
-  toast(ok ? () => account().copied : () => account().copyFailed);
+  toast(ok ? () => T("starhermit.inviteCopied") : () => T("starhermit.inviteFailed"));
 }
 
 // ------------------------------------------------------------------ input
@@ -645,7 +645,7 @@ onStart(() => {
 });
 platform.onOptionsChange(() => applyPalette());
 onPreferencesChange((p) => render.setReducedMotion(p.reducedMotion));
-onSessionEnded(() => toast(() => account().signedOut));
+onSessionEnded(() => toast(() => T("starhermit.signedOut")));
 // A hidden window pauses an active round (app.js visibilitychange) and holds the sound.
 onSuspend(() => {
   if (state && state.status === "active" && !app.screen) pause();

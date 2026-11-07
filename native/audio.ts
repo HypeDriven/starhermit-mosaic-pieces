@@ -8,14 +8,14 @@
 // click and back cues → "interface", the ambience plays on "music" (the
 // runtime has no ambience bus); the old default bus levels (effects 85 %,
 // ambience 40 %) are folded into each sound's gain. The drone is rendered
-// once into a seamless ten-second loop (every partial completes whole cycles
-// in it), in slices over several frames: a live synthesis graph makes clip
-// loads fail on the engine's web runtime. The synthesized blips the browser
+// once offline at start into a seamless ten-second loop (every partial
+// completes whole cycles in it): a live synthesis graph makes clip loads fail on
+// the engine's web runtime. The synthesized blips the browser
 // build played while a sample decoded are not ported, so a sample still
 // loading is silent. Every clip loads at once in onStart; the drone waits for
 // the mixer (natively at once, in a browser after the first press). A hidden window holds the
 // ambience (audio.js suspended its context on visibilitychange).
-import { context, createClip, loadClip, play as playClip, type AudioClip, type Bus, type Sound } from "starhermit:audio";
+import { context, createClip, loadClip, OfflineAudioContext, play as playClip, type AudioClip, type Bus, type Sound } from "starhermit:audio";
 
 const LEVEL = { effects: 0.85, ambience: 0.4 };
 /** audio.js SFX: event → sample. */
@@ -34,6 +34,7 @@ export function loadSfx(): void {
   for (const name of new Set(Object.values(SFX))) {
     loadClip(`sfx/${name}.opus`).then((c) => { clips.set(name, c); }, (e: unknown) => console.warn(`sfx ${name}: ${String(e)}`));
   }
+  renderDrone().then((c) => { droneClip = c; }, (e: unknown) => console.warn(`audio: ${String(e)}`));
 }
 /** A hidden window holds the ambience. */
 export function setSuspended(on: boolean): void { suspended = on; }
@@ -51,33 +52,29 @@ export function playEvent(name: string): void {
 
 // -- the ambience: three sines rendered into one ten-second loop --------------------------------------
 const RATE = 22050;
-const LOOP = 10 * RATE;
 const DRONE: [number, number][] = [[110, 0.05], [165.2, 0.035], [220.7, 0.02]];
-const SLICE = 22050;
-let drone: Float32Array | null = null;
-let rendered = 0;
 let droneClip: AudioClip | null = null;
 let ambienceOn = false;
 let ambienceSound: Sound | null = null;
 /** audio.js startAmbience: on the first round, then for good. */
 export function startAmbience(): void { ambienceOn = true; }
-function renderSlice(): void {
-  if (!drone) drone = new Float32Array(LOOP);
-  const end = Math.min(LOOP, rendered + SLICE);
-  for (let i = rendered; i < end; i++) {
-    const t = i / RATE;
-    let v = 0;
-    for (const [f, g] of DRONE) v += Math.sin(2 * Math.PI * f * t) * g;
-    drone[i] = v;
+async function renderDrone(): Promise<AudioClip> {
+  const off = new OfflineAudioContext(1, 10 * RATE, RATE);
+  for (const [f, level] of DRONE) {
+    const osc = off.createOscillator();
+    osc.frequency.value = f;
+    const g = off.createGain();
+    g.gain.value = level;
+    osc.connect(g).connect(off.destination);
+    osc.start();
   }
-  rendered = end;
-  if (rendered >= LOOP) { droneClip = createClip([drone], RATE); drone = null; }
+  const r = await off.startRendering();
+  return createClip([r.getChannelData(0)], RATE);
 }
 
-/** Each frame, once the mixer runs: the drone rendered a slice a frame, then the ambience on or off. */
+/** Each frame, once the mixer runs and the drone is rendered: the ambience on or off. */
 export function update(): void {
-  if (context.state !== "running") return;
-  if (!droneClip) { if (ambienceOn) renderSlice(); return; }
+  if (context.state !== "running" || !droneClip) return;
   try {
     const on = ambienceOn && !suspended;
     if (on && !ambienceSound) ambienceSound = playClip(droneClip, { bus: "music", gain: LEVEL.ambience, loop: true });

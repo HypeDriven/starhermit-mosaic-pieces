@@ -29,12 +29,12 @@ finished when all of them are down.
 | `native/style.ts` | Registers `assets/ui-style.json` and the theme / high-contrast tokens. |
 | `native/audio.ts` | One-shot samples per event and the rendered ambience drone on the runtime's buses. |
 | `native/platform.ts` | Saves (with foreign-save migration and conflict merge), the device's saved round, the game's options, the player, invite link, clock, leaderboard read and score posting. |
-| `native/i18n.ts`, `native/account.ts` | `T` / `N` over `strings.js` in the runtime's interface language; the StarHermit account strings. |
+| `native/i18n.ts` | `T` / `N` over the engine's `strings` (`assets/strings.json`) in the runtime's interface language; account lines are the engine's `starhermit.*`. |
 | `native/game.ts` | Typed facade over the pure modules below. |
 | `rules.js` | Pure deterministic rules engine: RNG, puzzle generation, legality queries, `applyCommand`, scoring, serialization, replay. Shared by the client, `server.js` and the tests. |
 | `content.js` | Versioned content: themes, 3 lessons, 40 journey stages, 3 practice presets, 3 challenges, daily ruleset, offline validators. |
 | `progress.js` | The save document: normalize, merge (`mergeProgress`), the old cloud document's conversion, the game's options. |
-| `strings.js` | Translation tables (English keys, nine locales), a classic script (`loadClassic`). |
+| `assets/strings.json` | Translation tables (English keys, nine locales). |
 | `score-script.js` | StarHermit platform script (`server=`): range-checks a completed round's score and posts it to the `high-score` leaderboard. |
 | `server.js` | Local dev host and `validateSubmission` (used by the tests); not part of the package. |
 | `assets/` | Key art, wall plaster, baked desk/slab/felt textures (`assets/textures/`, `tools/bake-textures.mjs`), `ui-style.json` (from `tools/ui-style.css`). |
@@ -414,12 +414,12 @@ string (shell labels, title and mode screens, lessons and their steps, journey/p
 lists, setup card, HUD, objective, announcements and rejection reasons, results, help, settings,
 profile and achievements, leaderboards, sync status, resume prompt) ships in all nine.
 
-**Where strings live:** `strings.js` holds the tables keyed by the English source text (en-GB, es-ES
+**Where strings live:** `assets/strings.json` holds the tables keyed by the English source text (en-GB, es-ES
 and fr-CA list only their differences — *colour*, *Ajustes*, *pointage*). `native/i18n.ts` loads it
-(`loadClassic`) and draws every string through `T()` each frame; content keys are marked with `N()` in
+(`strings.load`) and draws every string through `T()` each frame; content keys are marked with `N()` in
 `content.js` and the native modules. Ruleset tags are shown as `cols×rows` plus a translated twist
-(`rulesetLabel`), so `ruleset.label` stays a stable data id. The StarHermit account strings live in
-`native/account.ts`. "Mosaic Pieces" and "StarHermit" stay untranslated.
+(`rulesetLabel`), so `ruleset.label` stays a stable data id. The StarHermit account lines are the engine's
+`starhermit.*` keys (two sub-lines are `acct.*`). "Mosaic Pieces" and "StarHermit" stay untranslated.
 
 **Language setting:** the runtime's Options › Language (the player's choice, else the account's
 preferred language, else the device's) — `preferences().language`, mapped to the nearest shipped locale
@@ -542,7 +542,7 @@ for the tests; its listener binds only when run directly.
 - `node --test tests/progress.test.mjs` (the conflict merge, normalization, the old cloud document's
   conversion with its options, option validation) and `tests/i18n.test.mjs` (every key the native
   modules and content use is translated in every locale with placeholders and markup intact, no unused
-  rows, regional overrides, the account strings in all nine locales).
+  rows, regional overrides, the account lines the engine lacks).
 - `node tests/native.mjs`: the web index matches the files (`npm run package` ran last), `tsc` (no
   `skipLibCheck`), `starhermit check .` with zero warnings, and every `tests/native/*.play` as a guest
   `--render-check` driving the real UI: `menus.play` (every screen, theme and left-handed settings, a
