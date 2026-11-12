@@ -60,3 +60,7 @@ engine.gamepad.hint=West
 engine.gamepad.undo=North
 engine.gamepad.camera=RightStickPress
 engine.gamepad.pause=Start
+
+# Game language (saved per player); Automatic follows the account/device.
+control.localization=F2 | Language
+engine.group.localization=Interface

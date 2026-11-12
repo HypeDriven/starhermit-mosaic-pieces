@@ -1,3 +1,5 @@
+// localization-runtime:attached
+import { localizedCanvasFont as __l10nCanvasFont } from "./l10n/font.ts";
 // The gallery desk on starhermit:scene, as the browser build's render.js drew
 // it with three.js r170: the wooden desk, the plaster gallery wall with the
 // gilt frame holding the puzzle's goal picture and the brass picture light
@@ -110,7 +112,7 @@ function pieceTexture(color: string, glyph: string, detailed: boolean, size: num
     x.fillRect(0, 0, W, W);
   }
   x.fillStyle = "rgba(20,20,28,0.78)";
-  x.font = `bold ${Math.round(W * 0.5)}px system-ui, sans-serif`;
+  x.font = __l10nCanvasFont(`bold ${Math.round(W * 0.5)}px system-ui, sans-serif`);
   x.textAlign = "center"; x.textBaseline = "middle";
   x.fillText(glyph, W / 2, W * 0.53);
   // orientation tick at the top edge so rotation is readable by shape too
@@ -156,7 +158,7 @@ function paintGoal(state: State, palette: string[]): void {
     x.fillStyle = palette[p.colorIndex % palette.length]!;
     x.fillRect(cx + 1, cy + 1, size - 2, size - 2);
     x.fillStyle = "rgba(20,20,28,0.72)";
-    x.font = `bold ${Math.round(size * 0.5)}px system-ui, sans-serif`;
+    x.font = __l10nCanvasFont(`bold ${Math.round(size * 0.5)}px system-ui, sans-serif`);
     x.fillText(GLYPHS[p.colorIndex % GLYPHS.length]!, cx + size / 2, cy + size / 2 + size * 0.03);
   }
   goalTex.needsUpdate = true;
