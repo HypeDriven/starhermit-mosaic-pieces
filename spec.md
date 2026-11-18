@@ -4,7 +4,7 @@
 **Genre:** single-player assembly puzzle (tile placement with optional rotation).
 **Players:** 1, plus asynchronous score comparison through validated leaderboards.
 **Session length:** 40 s (a 2×2 lesson) to ~8 minutes (a 7×7 capstone stage).
-**Platforms:** a StarHermit engine script game (engine 1.39.0, host API minor 39), played natively by
+**Platforms:** a StarHermit engine script game (engine 1.44.1, host API minor 44), played natively by
 the StarHermit client and in desktop and mobile browsers (portrait and landscape) by the engine's web runtime.
 **Rendering:** `starhermit:scene` (three.js r185 names) drawing the gallery-desk diorama, with a complete
 accessible mirror of the tray and board (`starhermit:ui` buttons) that is fully playable on its own.
@@ -20,7 +20,7 @@ finished when all of them are down.
 
 | Path | Responsibility |
 |---|---|
-| `starhermit.txt` | Manifest: `launch=index.html`, `engine.api=1`, `engine.entry=native/main.ts`, `engine.version=1.39.0`, `engine.minor=39`, capabilities `platform,storage,clipboard`, `server=score-script.js`, one `control.<action>` line per keyboard action, `engine.group.*` and `engine.gamepad.*` defaults. |
+| `starhermit.txt` | Manifest: `launch=index.html`, `engine.api=1`, `engine.entry=native/main.ts`, `engine.version=1.44.1`, `engine.minor=44`, capabilities `platform,storage,clipboard`, `server=score-script.js`, one `control.<action>` line per keyboard action, `engine.group.*` and `engine.gamepad.*` defaults. |
 | `index.html`, `starhermit-files.json` | The web loader and file index `npm run package` (`starhermit package --web .`) writes; never edited by hand. |
 | `native/main.ts` | Entry module: the screen state, the round (the one validated command path), the round clock on fixed steps, lessons, progression, achievements, personal bests, posting to the leaderboard, the saved round, and input (actions, the board cursor, pointer and touch on the desk). |
 | `native/screens.ts` | Every screen and the round's shell (top bar, rails, HUD, goal thumbnail, bottom tray, drawers, toasts) in `starhermit:ui`. |
@@ -615,3 +615,11 @@ that does not finish.
 The string tables include complete regional variants for `fr-BE`, `de-BE`, `en-SG`, `en-HK`, `en-BQ`, `es-CO`, `de-IT`, `fr-IT`, `es-CL`, `es-AR`, `es-EC`, `de-BR`. These reuse the corresponding existing translations in their language family. The runtime can resolve the exact regional tag. Language selection is available from the game’s Options panel or F2 and is saved per player in `ui.language`. Changes apply during play. Additional national, regional and indigenous language packs are only shipped once every English message has a translation with intact placeholders and markup. Complete additional language tables: `nl-BE`, `ms-SG`, `ta-SG`, `zh-HK`, `yue-HK`, `nl-NL`, `fi-FI`, `sv-FI`, `et-EE`, `id-ID`, `vi-VN`, `zh-SG`, `ja-JP`, `da-DE`, `lb-BE`, `eu-FR`, `ca-FR`, `oc-FR`, `sl-IT`, `fur-IT`, `ca-IT`, `oc-IT`, `ru-FI`, `ca-ES`, `eu-ES`, `gl-ES`, `ru-EE`, `su-ID`, `km-VN`, `co-FR`, `bew-ID`.
 
 <!-- regional-localization:end -->
+
+## Engine 1.44.1
+
+Browser play uses the WebGPU-only StarHermit 1.44.1 web runtime. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
+
+The help screen replays through retained native UI while its contents, options, layout and key bindings are unchanged.
+
+Toasts use native engine stacking, styling, accessibility and lifetime management.

@@ -81,7 +81,9 @@ export const fresh = (n = 1): boolean => frame().frame - app.openedFrame <= n;
 export function announce(text: string, assertive = false): void {
   if (text) ui.announce(text.slice(0, 480), assertive ? { politeness: "assertive" } : undefined);
 }
-export function toast(text: Text, secs = 3.5): void { app.toasts.push({ text, until: now() + secs }); }
+export function toast(text: Text, secs = 3.5): void {
+  ui.toast!(text(), { duration: secs, position: app.screen ? "top" : "bottom", offset: app.screen ? 8 : 78, style: "toast", dismissible: false });
+}
 
 /** ui.openScreen: a screen replaces the open one, its first button focused. */
 export function openScreen(s: Screen, focus: string | null = null): void {

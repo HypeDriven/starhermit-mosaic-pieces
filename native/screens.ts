@@ -1,3 +1,4 @@
+import { bindings } from "starhermit:input";
 import { localizedStyle as __l10nStyle } from "./l10n/font.ts";
 // localization-runtime:attached
 import { openLocalizedOptions as __l10nOptions } from "./l10n/menu.ts";
@@ -129,7 +130,7 @@ export function formatTime(ms: number): string {
 }
 
 // ------------------------------------------------------------------ the frame
-export function drawScreens(): void {
+function drawScreensImmediate(): void {
   const L = layoutNow();
   const f = frame();
   firstId = null;
@@ -142,7 +143,6 @@ export function drawScreens(): void {
     draw.box(0, 0, f.width, f.height, ui.preferences().highContrast ? "screen-plain" : "screen-bg");
     if (s) card(s, L);
   }
-  toasts(L, !!s);
   if (app.focusNext) {
     const age = f.frame - app.openedFrame;
     const target = app.focusNext === "first" ? firstId : app.focusNext;
@@ -165,7 +165,7 @@ const LABELS: Record<Screen, string> = {
 function card(s: Screen, L: Layout): void {
   const outer = Math.min(560, L.lw - 32);
   const padX = L.lw < 420 ? 18 : 26, padY = L.lw < 420 ? 18 : 22;
-  const top = app.toasts.length ? 64 : 16;
+  const top = 16;
   const availH = Math.min(L.lh * 0.9, L.lh - top - 16);
   const innerH = availH - 2 * padY - 4;
   const natural = lastSize.get(s) ?? 0;
@@ -727,11 +727,11 @@ function drawer(L: Layout, tbH: number): void {
     else body();
   }, { style: "drawer", width: w, height: h, padding: { top: 12, bottom: 12, start: 14, end: 14 } }));
 }
-/** Toasts stack bottom centre in play; while a screen is open they move to the top edge (the card leaves room). */
-function toasts(L: Layout, screenOpen: boolean): void {
-  if (!app.toasts.length) return;
-  const w = Math.min(L.lw - 24, 460);
-  ui.place("toasts", screenOpen ? { anchor: "top", y: 8 } : { anchor: "bottom", y: L.portrait && state ? 78 : 16 }, () => ui.column("toast-col", () => {
-    app.toasts.forEach((t, i) => ui.column(`toast-${i}`, () => para(t.text(), w - 40, "p", `toast-text-${i}`), { style: "toast" }));
-  }, { spacing: 6, align: "center" }));
+
+
+export function drawScreens(): void {
+  if (app.screen !== "help") { drawScreensImmediate(); return; }
+  const actions = ["rotate","hint","undo","pause","camera","place","left","right","up","down","pick1","pick2","pick3","pick4","pick5","pick6","pick7","pick8","pick9"];
+  const version = JSON.stringify([(app as any).settings ?? (app as any).options ?? {}, (platform as any).options ?? {}, actions.map((action) => bindings(action))]);
+  ui.retain!("help-screen", version, drawScreensImmediate);
 }
