@@ -12,7 +12,7 @@
     "metadataSource": "starhermit.txt",
     "createdAt": "2026-09-01T07:01:04.375568+00:00",
     "coverArtSource": "manifest",
-    "coverArtUpdatedAt": "2026-11-23T17:02:14.510365+00:00",
+    "coverArtUpdatedAt": "2026-11-26T15:35:46.404553+00:00",
     "submittedByUserId": "2712e04e-461b-4d23-81ae-e40b429128a8",
     "submittedByUsername": "starhermit",
     "hosting": {
@@ -22,9 +22,9 @@
       "pinnedCommitSha": null,
       "deployedCommitSha": null,
       "deployError": null,
-      "deployedAt": "2026-11-23T17:02:14.497712+00:00",
+      "deployedAt": "2026-11-26T15:35:46.393311+00:00",
       "externalLaunchUrl": null,
-      "engineVersion": "1.47.0",
+      "engineVersion": "1.50.0",
       "deployWarning": null
     },
     "description": "Place and rotate scattered ceramic tiles to restore a complete mosaic on a gallery worktable.",
@@ -36,10 +36,10 @@
     "links": [],
     "isDisabled": false
   },
-  "publishedAt": "2026-11-23T17:02:14.637Z",
-  "sourceCommit": "fd18a10a9307040c4b6a79332a92e8db047628bd",
+  "publishedAt": "2026-11-26T15:35:45.537Z",
+  "sourceCommit": "d46758f565b4402a6c09b676599a2aba8b506dcf",
   "bytesReceived": 7465985,
-  "archiveSha256": "f456b8d0bae09a9962dd30df8661cf5131dc998c39a511a50cb5eea391af2dee",
+  "archiveSha256": "e797c7f6c4197cd17a8f138176b1abcf0f30d73c1c873640cd6778e86a596933",
   "indexSha256": "323f220eff83c13bc823ede905a43e2710d3f77433805bd3943a0a1dcbc5e333",
   "result": {
     "clientPublished": true,
@@ -48,7 +48,7 @@
     "bytesReceived": 7465985,
     "mode": "replace",
     "filesRemoved": 0,
-    "engineVersion": "1.47.0",
+    "engineVersion": "1.50.0",
     "deployWarning": null
   },
   "liveVerification": {
